@@ -1,0 +1,131 @@
+/* Nav Bar: Home Button Color*/
+.nav-pills .nav-link.active, .nav-pills .show>.nav-link {
+    color: white;
+    background-color:#61162d !important;
+}
+/* Nav Bar: Tab Buttons */
+.nav {
+    --bs-nav-link-color: #61162d !important;
+    --bs-nav-link-hover-color: rgb(191, 137, 0)!important;
+}
+/* Webpage: Header Title color*/
+header{
+    color: rgb(191, 137, 0);
+}
+/* Dropdown Menu Color */
+.dropdown-menu{
+    --bs-dropdown-link-active-bg: #61162d !important;
+}
+
+/* Nav Button - Dropdown Stylization  */
+ul ul{
+    list-style: none;
+}
+ul li a {
+    display: block; 
+    padding: 15px 20px; 
+    color:  #61162d;
+    text-decoration: none;
+    font-size: 20px;
+}
+ul li:hover ul.dropdown{
+    display: block;
+}
+
+/*   *** Student Review Card: Style ***   */
+.carousel-item {
+    height: 30rem;
+}
+.container .car-contain {
+    text-align: center;
+    bottom: 0;
+    padding-left: 50px;
+    padding-right: 50px;
+    padding-top: 50px;
+    margin-top: 20px;
+}
+.ratings {
+    color: rgb(255, 214, 92);
+}
+/* Student Review Card: Machine Learning */
+.container .car-contain-special-ml{
+    text-align: center;
+    bottom: 0;
+    padding-left: 50px;
+    padding-right: 50px;
+    padding-top: 0px;
+    margin-top: 10px;
+}
+/* Student Review Card: Fundamentals of Programming */
+.container .car-contain-special-fp{
+    text-align: center;
+    bottom: 0;
+    padding-left: 50px;
+    padding-right: 50px;
+    padding-top: 0px;
+    margin-top: 10px;
+}
+
+/* ** Student Review Cards: Page Responsiveness **  */ 
+
+/* Mobile screens and up -- phone */
+@media (max-width: 576px){
+    .container .car-contain-special-ml {
+        padding-left: 2px;
+        padding-right: 3px;
+        padding-top: 3px;
+        margin-top: 1px;
+      }
+      .container .car-contain-special-fp {
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 3px;
+        margin-top: 3px;
+      }
+}
+/* Medium screens and up -- tablet */
+@media (min-width: 768px) {
+    .container .car-contain-special-ml {
+      padding-left: 20px;
+      padding-right: 20px;
+      padding-top: 15px;
+      margin-top: 15px;
+    }
+    .container .car-contain-special-fp {
+        padding-left: 0px;
+        padding-right: 0px;
+        padding-top: 0px;
+        margin-top: 0px;
+      }
+  }
+/* Large screens and up -- laptop */
+@media (min-width: 992px) {
+    .container .car-contain-special-ml {
+      padding-left: 30px;
+      padding-right: 30px;
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+    .container .car-contain-special-fp {
+        padding-left: 30px;
+        padding-right: 30px;
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+  }
+/* Extra Large screens and up -- desktop */
+@media (min-width: 1200px) {
+    .car-contain-special-ml {
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+    .car-contain-special-fp {
+        padding-left: 50px;
+        padding-right: 50px;
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+}
+

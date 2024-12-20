@@ -1,0 +1,33 @@
+/*Targets the Home Button Color*/
+.nav-pills .nav-link.active, .nav-pills .show>.nav-link {
+    color: white;
+    background-color:#61162d !important;
+}
+/*Targets the Nav Tab colors */
+.nav {
+    --bs-nav-link-color: #61162d !important;
+    --bs-nav-link-hover-color: rgb(191, 137, 0)!important;
+}
+/*Targets the Text color of main page heading*/
+header{
+    color: rgb(191, 137, 0);
+}
+/* Targets the dropdown menu button */
+.dropdown-menu{
+    --bs-dropdown-link-active-bg: #61162d !important;
+}
+
+/* Navigation Drop Menu */
+ul ul{
+    list-style: none;
+}
+ul li a {
+    display: block; 
+    padding: 15px 20px; 
+    color:  #61162d;
+    text-decoration: none;
+    font-size: 20px;
+}
+ul li:hover ul.dropdown{
+    display: block;
+}
