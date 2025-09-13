@@ -1,6 +1,9 @@
+span{
+    color: rgb(191, 137, 0);
+}
 /* Background Image for Profile Header*/
 .header-background{
-    background-image: url(images/maroon-bkg.jpg);
+    background-image: url(images/tamiu-aic.jpg);
     background-repeat: no-repeat;
     background-size: cover;
 }
@@ -10,23 +13,22 @@
     list-style-type: none;
 }
 /* Profile Header Image Roundness */
-img{
+.profile-img{
     border-radius: 50%;
+    border-width: thin;
+    border-style: solid;
+    border-color: white;
 }
 /* Home Nav Button Color */
 .nav-pills .nav-link.active, .nav-pills .show>.nav-link {
     color: white;
-    background-color:#61162d !important;
+    background-color:#163961 !important;
 }
 
-/* Nav Button - Dropdown Stylization */
-ul ul{
-    list-style: none;
-}
 ul li a {
     display: block; 
     padding: 15px 20px; 
-    color:  #61162d;
+    color:  #163961;
     text-decoration: none;
     font-size: 20px;
 }
@@ -36,16 +38,13 @@ ul li:hover ul.dropdown{
 
 /* Dropdown Menu Color */
 .dropdown-menu{
-    --bs-dropdown-link-active-bg: #61162d !important;
+    --bs-dropdown-link-active-bg: #163961 !important;
 }
 
 /* Nav Button colors */
 .nav {
-    --bs-nav-link-color: #61162d !important;
+    --bs-nav-link-color: #163961 !important;
     --bs-nav-link-hover-color: rgb(191, 137, 0)!important;
 }
-/* Home Social Media Icon*/
-a:hover .bi{
-    fill: #bf8900 !important;
-}
+
 
