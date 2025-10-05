@@ -40,6 +40,9 @@ ul li:hover ul.dropdown{
 .ratings {
     color: rgb(255, 214, 92);
 } 
+.scalable-card-text{
+    font-size: clamp(0.7rem, 1vw, 1rem);
+}
 
 /* Year Variable */
 :root{
