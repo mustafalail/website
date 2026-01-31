@@ -46,7 +46,7 @@ ul li:hover ul.dropdown{
 
 /* Year Variable */
 :root{
-    --current-year: "2025";
+    --current-year: "2026";
 }
 .year::after {
     content: var(--current-year);
