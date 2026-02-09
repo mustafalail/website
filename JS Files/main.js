@@ -1,7 +1,6 @@
 import { db } from './firebase-config.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
-// 1. DEFINE the function first
 async function syncFooterYear() {
     try {
         // ID must matches Firebase console exactly
@@ -23,5 +22,4 @@ async function syncFooterYear() {
     }
 }
 
-// 2. CALL the function at the bottom
 syncFooterYear();

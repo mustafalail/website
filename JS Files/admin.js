@@ -4,18 +4,18 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 
 // Check if user is authenticated on page load
 onAuthStateChanged(auth, (user) => {
-    // 1. Check what page the user is currently looking at
+    //Checks what page the user is currently looking at
     const isLoginPage = window.location.pathname.includes("login.html");
 
     if (!user) {
-        // 2. Only redirect to login if they AREN'T already there
+        // Only redirects to login if the user isn't already there
         if (!isLoginPage) {
             console.log("Not logged in. Redirecting to login page...");
             window.location.href = "login.html";
         }
     }
     else {
-        // 3. If they ARE logged in but try to visit login.html, send them to the dashboard
+        // If the user is logged in but try to visit login.html, send them to the dashboard
         if (isLoginPage) {
             window.location.href = "admin.html";
         } else {
