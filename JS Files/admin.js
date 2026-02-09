@@ -1,6 +1,16 @@
-import { db } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
 import { doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
+onAuthStateChanged(auth, (user) => {
+    if (!user) {
+        // No user is signed in, send them back to login
+        window.location.href = "login.html";
+    }
+    else {
+        loadCurrentSettings(); // Load settings if user is authenticated
+    }
+});
 // --- LOAD FUNCTION: Loads current year ---
 async function loadCurrentSettings() {
     const yearInput = document.getElementById('year-input');
@@ -17,9 +27,6 @@ async function loadCurrentSettings() {
         console.error("Error loading settings:", error);
     }
 }
-
-// Run the load function as soon as the script starts
-loadCurrentSettings();
 
 const saveBtn = document.getElementById('save-settings');
 

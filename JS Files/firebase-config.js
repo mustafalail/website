@@ -3,11 +3,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-analytics.js";
 // NEW: Import the Firestore database tool
-import { getFirestore } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js"
+import{ getAuth } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js"
   // TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
 
-  // Your web app's Firebase configuration
+  // Web app's Firebase configuration
   // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
     apiKey: "AIzaSyD1bLdkuYRQuCrG5Fpk_qlmXQA7Z964Bc0",
@@ -22,10 +23,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-
-// NEW: Initialize the database connection
 const db = getFirestore(app);
+const auth = getAuth(app);
 // Export the app so other files can use it later
-export { app, db };
+export { app, db, auth };
 
 console.log("Firebase connection initialized successfully!");
