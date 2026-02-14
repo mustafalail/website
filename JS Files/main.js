@@ -1,4 +1,4 @@
-import { db } from './firebase-config.js';
+import { db } from '..JS Files/firebase-config.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 async function syncFooterYear() {
