@@ -2,71 +2,100 @@ import { db, auth } from './firebase-config.js';
 import { doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
-// Check if user is authenticated on page load
-onAuthStateChanged(auth, (user) => {
-    //Checks what page the user is currently looking at
-    const isLoginPage = window.location.pathname.includes("login.html");
+/**
+ * -- Global Security -- 
+ * This remains at the top level because it controls access to the entire page.
+ */
 
+onAuthStateChanged(auth, (user) => {
+    const isLoginPage = window.location.pathname.includes("login.html");
     if (!user) {
-        // Only redirects to login if the user isn't already there
-        if (!isLoginPage) {
-            console.log("Not logged in. Redirecting to login page...");
-            window.location.href = "login.html";
-        }
-    }
-    else {
-        // If the user is logged in but try to visit login.html, send them to the dashboard
+        if (!isLoginPage) window.location.href = "login.html";
+    } else {
         if (isLoginPage) {
             window.location.href = "admin.html";
         } else {
-            // Otherwise, load the protected data
-            loadCurrentSettings();
+            // Kick off all features once user is logged in
+            FooterManager.init();
+            // FutureManagers.init() will go here
         }
     }
 });
-// --- LOAD FUNCTION: Loads current year ---
-async function loadCurrentSettings() {
-    const yearInput = document.getElementById('year-input');
-    const footerRef = doc(db, "global_config", "footer_year_info");
 
-    try {
-        const docSnap = await getDoc(footerRef);
-        if (docSnap.exists()) {
-            // This line puts the cloud data directly into the input box
-            yearInput.value = docSnap.data().copyright_year;
-            console.log("Current settings loaded from cloud.");
+/**
+ * -- Footer Year Feature --
+ * Has the Draft vs. Live logic and UI status indicators
+ */
+const FooterManager = {
+    ref: doc(db, "global_config", "footer_year_info"),
+    elements: {
+        input: document.getElementById('year-input'),
+        preview: document.getElementById('preview-year'),
+        status: document.getElementById('sync-status')
+    },
+
+    async init() {
+        try {
+            const docSnap = await getDoc(this.ref);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                // Default to draft_year, fallback to copyright_year
+                const currentDraft = data.draft_year || data.copyright_year;
+                
+                if (this.elements.input) this.elements.input.value = currentDraft;
+                if (this.elements.preview) this.elements.preview.innerText = currentDraft;
+                
+                this.updateStatusUI(data.draft_year === data.copyright_year);
+            }
+        } catch (e) { console.error("Footer Load Error:", e); }
+    },
+
+    async saveDraft() {
+        const newVal = this.elements.input.value;
+        try {
+            await updateDoc(this.ref, { draft_year: newVal });
+            this.elements.preview.innerText = newVal;
+            this.updateStatusUI(false);
+            alert("Draft updated! Review the preview before publishing.");
+        } catch (e) { console.error("Save Draft Error:", e); }
+    },
+
+    async publishLive() {
+        try {
+            const docSnap = await getDoc(this.ref);
+            if (docSnap.exists()) {
+                const draftVal = docSnap.data().draft_year;
+                await updateDoc(this.ref, { copyright_year: draftVal });
+                this.updateStatusUI(true);
+                alert("Success! The main website is now updated.");
+            }
+        } catch (e) { console.error("Publish Error:", e); }
+    },
+
+    updateStatusUI(isSynced) {
+        if (!this.elements.status) return;
+        if (isSynced) {
+            this.elements.status.innerText = "Status: Synced with live site";
+            this.elements.status.className = "form-text text-success mt-2";
+        } else {
+            this.elements.status.innerText = "Status: Changes pending (Not Live)";
+            this.elements.status.className = "form-text text-warning mt-2 fw-bold";
         }
-    } catch (error) {
-        console.error("Error loading settings:", error);
     }
-}
+};
 
-const saveBtn = document.getElementById('save-settings');
+/**
+ * -- Event Listeners -- 
+ */
 
-saveBtn.addEventListener('click', async () => {
-    const newYear = document.getElementById('year-input').value;
-    const footer_year_infoRef = doc(db, "global_config", "footer_year_info");
+// Footer Feature Listeners
+document.getElementById('save-draft')?.addEventListener('click', () => FooterManager.saveDraft());
+document.getElementById('publish-live')?.addEventListener('click', () => FooterManager.publishLive());
 
-    try{
-        await updateDoc(footer_year_infoRef, {
-            copyright_year: newYear
-        });
-        alert("Copyright year updated successfully!");
-    }
-    catch (error) {
-        console.error("Error updating document: ", error);
-        alert("Failed to update copyright year. Please try again.");
-    }
-});
-
-//Sign out functionality
-const logoutBtn = document.getElementById('logout-btn');
-logoutBtn.addEventListener('click', async () => {
+// Sign Out Logic
+document.getElementById('logout-btn')?.addEventListener('click', async () => {
     try {
         await signOut(auth);
-        console.log("User signed out successfully.");
-
-    } catch (error) {
-        console.error("Logout Error:", error);
-    }
+        console.log("User signed out.");
+    } catch (e) { console.error("Logout Error:", e); }
 });

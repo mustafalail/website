@@ -15,16 +15,40 @@
 </head>
 
 <body>
-    <div class="container mt-5">
+    <div class="container card p-4 shadow-sm mt-5">
         <h1>Admin Dashboard</h1>
-        <div class="card p-4">
-            <h3>Website Settings</h3>
-            <div class="mb-3">
-                <label>Current Copyright Year:</label>
-                <input type="text" id="year-input" class="form-control" placeholder="e.g. 2026">
+
+        <div class="card p-4 mt-3">
+            <h3 class="mb-4">Footer Settings</h3>
+            
+            <div class="mb-4">
+                <label for="year-input" class="form-label fw-bold">Edit Copyright Year:</label>
+                <div class="input-group">
+                    <input type="text" id="year-input" class="form-control" placeholder="e.g. 2027">
+                    <button id="save-draft" class="btn btn-secondary">Update Preview</button>
+                </div>
+                <div id="sync-status" class="form-text text-muted mt-2">
+                    Draft is currently synced with the live site.
+                </div>
             </div>
-            <button id="save-settings" class="btn btn-primary">Save Changes</button>
+        
+            <div class="p-3 mb-4 bg-light border rounded">
+                <p class="text-uppercase text-muted small fw-bold mb-2">Live Preview (What it will look like):</p>
+                <div class="fs-5 p-2 bg-white border rounded text-center">
+                    © <span id="preview-year">----</span> Al Lail, Faculty Website
+                </div>
+            </div>
+        
+            <div class="d-grid">
+                <button id="publish-live" class="btn btn-success btn-lg">
+                    <i class="bi bi-cloud-upload"></i> Publish to Live Site
+                </button>
+                <small class="text-center text-muted mt-2">
+                    Clicking this will update the year across all pages.
+                </small>
+            </div>
         </div>
+
         <div class="mt-3">
             <button id="logout-btn" class="btn btn-outline-danger">Sign Out</button>
         </div>
