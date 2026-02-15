@@ -17,7 +17,7 @@ onAuthStateChanged(auth, (user) => {
         } else {
             // Kick off all features once user is logged in
             FooterManager.init();
-            // FutureManagers.init() will go here
+            VideoManager.init();
         }
     }
 });
@@ -84,6 +84,86 @@ const FooterManager = {
     }
 };
 
+const VideoManager = {
+    activeDocId: 'home_grad_video', // Default selection
+
+    elements: {
+        selector: document.getElementById('video-selector'),
+        input: document.getElementById('video-input'),
+        iframe: document.getElementById('video-preview-iframe'),
+        status: document.getElementById('video-sync-status')
+    },
+
+    async init() {
+        if (!this.elements.selector) return;
+
+        // Load default data
+        await this.loadVideoData();
+
+        // Listen for when the professor picks a different video to edit
+        this.elements.selector.addEventListener('change', (e) => {
+            this.activeDocId = e.target.value;
+            this.loadVideoData();
+        });
+    },
+
+    async loadVideoData() {
+        const videoRef = doc(db, "video_content", this.activeDocId);
+        const docSnap = await getDoc(videoRef);
+        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const currentDraft = data.draft_url || data.live_url;
+            this.elements.input.value = currentDraft || "";
+            this.updatePreview(currentDraft);
+            this.updateStatusUI(data.draft_url === data.live_url);
+        }
+    },
+
+    updatePreview(url) {
+        if (!url) {
+            this.elements.iframe.src = "";
+            return;
+        }
+        // Regex to pull the ID from various YouTube URL formats
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        const videoId = (match && match[2].length === 11) ? match[2] : null;
+        
+        this.elements.iframe.src = videoId ? `https://www.youtube.com/embed/${videoId}` : "";
+    },
+
+    async saveDraft() {
+        const videoRef = doc(db, "video_content", this.activeDocId);
+        const newVal = this.elements.input.value;
+        await updateDoc(videoRef, { draft_url: newVal });
+        this.updatePreview(newVal);
+        this.updateStatusUI(false);
+        alert(`Draft saved for ${this.activeDocId}!`);
+    },
+
+    async publishLive() {
+        const videoRef = doc(db, "video_content", this.activeDocId);
+        const docSnap = await getDoc(videoRef);
+        if (docSnap.exists()) {
+            const draftVal = docSnap.data().draft_url;
+            await updateDoc(videoRef, { live_url: draftVal });
+            this.updateStatusUI(true);
+            alert("This video is now LIVE on the website.");
+        }
+    },
+
+    updateStatusUI(isSynced) {
+        if (isSynced) {
+            this.elements.status.innerText = "Status: Synced with live site";
+            this.elements.status.className = "form-text text-success mt-2";
+        } else {
+            this.elements.status.innerText = "Status: Changes pending (Not Live)";
+            this.elements.status.className = "form-text text-warning mt-2 fw-bold";
+        }
+    }
+};
+
 /**
  * -- Event Listeners -- 
  */
@@ -91,6 +171,12 @@ const FooterManager = {
 // Footer Feature Listeners
 document.getElementById('save-draft')?.addEventListener('click', () => FooterManager.saveDraft());
 document.getElementById('publish-live')?.addEventListener('click', () => FooterManager.publishLive());
+
+// Video Content Listeners
+// 1. Update Preview (Save Draft)
+document.getElementById('save-video-draft')?.addEventListener('click', () => { VideoManager.saveDraft();});
+// 2. Publish to Live Site
+document.getElementById('publish-video-live')?.addEventListener('click', () => {VideoManager.publishLive();});
 
 // Sign Out Logic
 document.getElementById('logout-btn')?.addEventListener('click', async () => {

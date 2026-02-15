@@ -1,5 +1,5 @@
 import { db } from './firebase-config.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { doc, getDoc , collection, getDocs } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 
 async function syncFooterYear() {
     try {
@@ -21,5 +21,37 @@ async function syncFooterYear() {
         console.error("Error fetching document:", error);
     }
 }
+
+async function loadAllVideos() {
+    try {
+        console.log("Attempting to fetch videos from 'video_content'...");
+        const querySnapshot = await getDocs(collection(db, "video_content"));
+        
+        querySnapshot.forEach((doc) => {
+            const videoElement = document.getElementById(doc.id);
+            
+            if (videoElement) {
+                const data = doc.data();
+                const liveUrl = data.live_url;
+                console.log(` Match found for ID [${doc.id}]. URL: ${liveUrl}`);
+
+                if (liveUrl) {
+                    // Extract ID using regex
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = liveUrl.match(regExp);
+                    const videoId = (match && match[2].length === 11) ? match[2] : null;
+
+                    if (videoId) {
+                        videoElement.src = `https://www.youtube.com/embed/${videoId}`;
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Video Load Error:", error);
+    }
+}
+
+loadAllVideos();
 
 syncFooterYear();
