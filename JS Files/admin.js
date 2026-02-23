@@ -194,6 +194,43 @@ const VideoManager = {
     }
 };
 
+const PageArchitect = {
+    elements: {
+        folder: document.getElementById('new-page-folder'),
+        id: document.getElementById('new-page-id'),
+        title: document.getElementById('new-page-title'),
+        body: document.getElementById('new-page-body'),
+        createBtn: document.getElementById('create-page-btn')
+    },
+
+    async createPage() {
+        const slug = this.elements.id.value.trim().toLowerCase().replace(/\s+/g, '-');
+        const folder = this.elements.folder.value;
+        
+        if (!slug) { alert("Please enter a Page Slug"); return; }
+
+        try {
+            // Save the page data to a new collection called 'site_pages'
+            await setDoc(doc(db, "site_pages", slug), {
+                page_id: slug,
+                folder: folder,
+                title: this.elements.title.value,
+                body_text: this.elements.body.value,
+                timestamp: new Date()
+            });
+
+            // Generate the link for the professor
+            const generatedLink = `${window.location.origin}/${folder}/subpage-template.html?id=${slug}`;
+            
+            alert(`Page Created Successfully!\n\nYour new link is:\n${generatedLink}`);
+            console.log("New Page Link:", generatedLink);
+            
+        } catch (e) {
+            console.error("Error creating page:", e);
+        }
+    }
+};
+
 /**
  * -- Event Listeners -- 
  */
