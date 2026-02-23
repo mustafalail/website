@@ -7,6 +7,19 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
  * This remains at the top level because it controls access to the entire page.
  */
 
+const refreshSitePreview = () => {
+    const previewFrame = document.getElementById('site-preview');
+    if (previewFrame) {
+        console.log("Refreshing staging preview...");
+        
+        // Give Firebase 1 second to finish the write operation
+        setTimeout(() => {
+            console.log("🔄 Refreshing staging preview now.");
+            previewFrame.contentWindow.location.reload();
+        }, 1000);
+    }
+};
+
 onAuthStateChanged(auth, (user) => {
     const isLoginPage = window.location.pathname.includes("login.html");
     if (!user) {
@@ -54,10 +67,15 @@ const FooterManager = {
         const newVal = this.elements.input.value;
         try {
             await updateDoc(this.ref, { draft_year: newVal });
+            
             this.elements.preview.innerText = newVal;
             this.updateStatusUI(false);
+
+            refreshSitePreview();
+
             alert("Draft updated! Review the preview before publishing.");
         } catch (e) { console.error("Save Draft Error:", e); }
+    
     },
 
     async publishLive() {
@@ -67,6 +85,9 @@ const FooterManager = {
                 const draftVal = docSnap.data().draft_year;
                 await updateDoc(this.ref, { copyright_year: draftVal });
                 this.updateStatusUI(true);
+
+                refreshSitePreview();
+
                 alert("Success! The main website is now updated.");
             }
         } catch (e) { console.error("Publish Error:", e); }
@@ -136,10 +157,16 @@ const VideoManager = {
     async saveDraft() {
         const videoRef = doc(db, "video_content", this.activeDocId);
         const newVal = this.elements.input.value;
-        await updateDoc(videoRef, { draft_url: newVal });
-        this.updatePreview(newVal);
-        this.updateStatusUI(false);
-        alert(`Draft saved for ${this.activeDocId}!`);
+        try {
+            await updateDoc(videoRef, { draft_url: newVal });
+            this.updatePreview(newVal);
+            this.updateStatusUI(false);
+            
+            // Call our helper function
+            refreshSitePreview();
+            
+            alert(`Draft saved for ${this.activeDocId}!`);
+        } catch (e) { console.error("Video Save Draft Error:", e); }
     },
 
     async publishLive() {
@@ -149,6 +176,9 @@ const VideoManager = {
             const draftVal = docSnap.data().draft_url;
             await updateDoc(videoRef, { live_url: draftVal });
             this.updateStatusUI(true);
+
+            refreshSitePreview();
+
             alert("This video is now LIVE on the website.");
         }
     },

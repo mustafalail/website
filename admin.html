@@ -15,10 +15,12 @@
 </head>
 
 <body>
-    <div class="container card p-4 shadow-sm mt-5">
+    <!--
+    <div class="container-fluid p-4 mt-5">
+
         <h1>Admin Dashboard</h1>
 
-        <div class="card p-4 mt-3">
+        <div class="card p-4 container-fluid mt-4">
             <h3 class="mb-4">Footer Settings</h3>
             
             <div class="mb-4">
@@ -85,6 +87,101 @@
 
         <div class="mt-3">
             <button id="logout-btn" class="btn btn-outline-danger">Sign Out</button>
+        </div>
+    </div>-->
+    <div class="d-flex justify-content-between text-center p-4 bg-body-tertiary">
+        <h1 class="h2 mb-0">Admin Dashboard</h1>
+        <button id="logout-btn" class="btn btn-outline-danger btn-sm">Sign Out</button>
+    </div>
+    <div class="container-fluid p-4 pb-0">
+        <div class="row">
+            
+            <div class="col-lg-4 col-md-5 mb-4" style="max-height: 90vh; overflow-y: auto;">
+                <!-- FOOTER SETTINGS -->
+                <div class="card p-4 shadow-sm mb-4">
+                    <h3 class="mb-4">Footer Settings</h3>
+                    <div class="mb-4">
+                        <label for="year-input" class="form-label fw-bold">Edit Copyright Year:</label>
+                        <div class="input-group">
+                            <input type="text" id="year-input" class="form-control" placeholder="e.g. 2027">
+                            <button id="save-draft" class="btn btn-secondary">Update Preview</button>
+                        </div>
+                        <div id="sync-status" class="form-text text-muted mt-2">Draft synced with live site.</div>
+                    </div>
+                    <div class="d-grid">
+                        <button id="publish-live" class="btn btn-success">Publish to Live Site</button>
+                    </div>
+                </div>
+                <!-- VIDEO SETTINGS -->
+                <div class="card p-4 shadow-sm">
+                    <h3 class="mb-4">Video Settings</h3>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Video to Edit:</label>
+                        <select id="video-selector" class="form-select">
+                            <option value="home_main">Homepage - Graduation Video</option>
+                            <option value="teaching_robotics">Teaching - Curriculum Development</option>
+                            <option value="teaching_ai">Teaching - Undergraduate Research</option>
+                        </select>
+                    </div>
+                    <div class="input-group mb-3">
+                        <input type="text" id="video-input" class="form-control" placeholder="YouTube URL">
+                        <button id="save-video-draft" class="btn btn-secondary">Update Preview</button>
+                    </div>
+                    <div class="d-grid">
+                        <button id="publish-video-live" class="btn btn-success">Publish to Live Site</button>
+                    </div>
+                </div>
+                <!-- PAGE CREATOR -->
+                <div class="card p-4 mt-4 shadow-sm">
+                    <h3 class="mb-4"><i class="bi bi-file-earmark-plus"></i> Page Creator</h3>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Main Page (Folder Path):</label>
+                        <select id="new-page-folder" class="form-select">
+                            <option value="research-subpages">Research Subpages (/research-subpages/)</option>
+                            <option value="teaching-subpages">Teaching Subpages (/teaching-subpages/)</option>
+                        </select>
+                    </div>
+                
+                    <div class="mb-3">
+                        <label class="form-label">Page Title:</label>
+                        <input type="text" id="new-page-title" class="form-control" placeholder="e.g. My New Subpage">
+                    </div>
+                
+                    <div class="mb-3">
+                        <label class="form-label">Main Body Text:</label>
+                        <textarea id="new-page-body" class="form-control" rows="5"></textarea>
+                    </div>
+                
+                    <div class="mb-3">
+                        <label class="form-label">Link this from (Parent Page):</label>
+                        <select id="parent-page-link" class="form-select">
+                            <option value="research.html">Research Main Page</option>
+                            <option value="teaching.html">Teaching Main Page</option>
+                        </select>
+                    </div>
+                
+                    <div class="d-grid">
+                        <button id="create-page-btn" class="btn btn-warning btn-lg">Generate & Link Page</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LIVE PREVIEW WINDOW -->
+            <div class="col-lg-8 col-md-7">
+                <div class="card shadow-sm h-100 border-primary" style="min-height: 85vh;">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <span class="fw-bold"><i class="bi bi-eye"></i> Live Staging Preview</span>
+                        <button class="btn btn-sm btn-light" onclick="document.getElementById('site-preview').contentWindow.location.reload();">
+                            <i class="bi bi-arrow-clockwise"></i> Force Refresh
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <iframe id="site-preview" src="index.html" width="100%" height="100%" style="border: none; min-height: 80vh;"></iframe>
+                    </div>
+                </div>
+            </div>
+    
         </div>
     </div>
 </body>
