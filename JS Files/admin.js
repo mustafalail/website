@@ -1,4 +1,4 @@
-import { db, auth } from './firebase-config.js';
+import { db, auth, storage } from './firebase-config.js';
 import { doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
@@ -104,7 +104,10 @@ const FooterManager = {
         }
     }
 };
-
+/**
+ * -- Video Settings --
+ * Handles multiple video entries, each with its own draft vs. live logic and preview.
+ */
 const VideoManager = {
     activeDocId: 'home_grad_video', // Default selection
 
@@ -194,39 +197,61 @@ const VideoManager = {
     }
 };
 
-const PageArchitect = {
+const SectionManager = {
     elements: {
-        folder: document.getElementById('new-page-folder'),
-        id: document.getElementById('new-page-id'),
-        title: document.getElementById('new-page-title'),
-        body: document.getElementById('new-page-body'),
-        createBtn: document.getElementById('create-page-btn')
+        location: document.getElementById('section-location'),
+        title: document.getElementById('section-title'),
+        body: document.getElementById('section-body'),
+        image: document.getElementById('section-image'),
+        hasButton: document.getElementById('has-subpage-button'),
+        addBtn: document.getElementById('add-section-btn')
     },
 
-    async createPage() {
-        const slug = this.elements.id.value.trim().toLowerCase().replace(/\s+/g, '-');
-        const folder = this.elements.folder.value;
+    async addSection() {
+        const title = this.elements.title.value;
+        const body = this.elements.body.value;
+        const location = this.elements.location.value;
+        const file = this.elements.image.files[0];
         
-        if (!slug) { alert("Please enter a Page Slug"); return; }
+        if (!title || !body) {
+            alert("Please fill in the Heading and Description.");
+            return;
+        }
 
         try {
-            // Save the page data to a new collection called 'site_pages'
-            await setDoc(doc(db, "site_pages", slug), {
-                page_id: slug,
-                folder: folder,
-                title: this.elements.title.value,
-                body_text: this.elements.body.value,
-                timestamp: new Date()
+            this.elements.addBtn.disabled = true;
+            this.elements.addBtn.innerText = "Uploading...";
+
+            let imageUrl = null;
+
+            // 1. Handle Image Upload if it exists
+            if (file) {
+                const storageRef = ref(storage, `section_images/${Date.now()}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                imageUrl = await getDownloadURL(snapshot.ref);
+            }
+
+            // 2. Create the Section Document
+            // This goes into 'page_sections' which we will use to populate the main pages
+            await addDoc(collection(db, "page_sections"), {
+                target_page: location, // e.g., 'research.html'
+                title: title,
+                body_text: body,
+                image_url: imageUrl,
+                has_subpage: this.elements.hasButton.value === "true",
+                slug: title.toLowerCase().trim().replace(/\s+/g, '-'), // URL-friendly ID
+                createdAt: serverTimestamp()
             });
 
-            // Generate the link for the professor
-            const generatedLink = `${window.location.origin}/${folder}/subpage-template.html?id=${slug}`;
-            
-            alert(`Page Created Successfully!\n\nYour new link is:\n${generatedLink}`);
-            console.log("New Page Link:", generatedLink);
-            
+            alert("Section added successfully!");
+            location.reload(); // Refresh to clear form
+
         } catch (e) {
-            console.error("Error creating page:", e);
+            console.error("Error adding section:", e);
+            alert("Failed to add section. Check console.");
+        } finally {
+            this.elements.addBtn.disabled = false;
+            this.elements.addBtn.innerText = "Add Section to Page";
         }
     }
 };
@@ -244,6 +269,9 @@ document.getElementById('publish-live')?.addEventListener('click', () => FooterM
 document.getElementById('save-video-draft')?.addEventListener('click', () => { VideoManager.saveDraft();});
 // 2. Publish to Live Site
 document.getElementById('publish-video-live')?.addEventListener('click', () => {VideoManager.publishLive();});
+
+// New Section Listeners
+document.getElementById('add-section-btn')?.addEventListener('click', () => SectionManager.addSection());
 
 // Sign Out Logic
 document.getElementById('logout-btn')?.addEventListener('click', async () => {

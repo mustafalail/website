@@ -25,7 +25,9 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
+
 // Export the app so other files can use it later
-export { app, db, auth };
+export { app, db, auth, storage };
 
 console.log("Firebase connection initialized successfully!");

@@ -131,14 +131,14 @@
                         <button id="publish-video-live" class="btn btn-success">Publish to Live Site</button>
                     </div>
                 </div>
-                <!-- PAGE CREATOR -->
+                <!-- PAGE CREATOR 
                 <div class="card p-4 mt-4 shadow-sm">
                     <h3 class="mb-4"><i class="bi bi-file-earmark-plus"></i> Page Creator</h3>
                     
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Select Main Page (Folder Path):</label>
+                        <label class="form-label fw-bold">Select where this page belongs to:</label>
                         <select id="new-page-folder" class="form-select">
-                            <option value="research-subpages">Research Subpages (/research-subpages/)</option>
+                            <option value="research-subpages">Research)</option>
                             <option value="teaching-subpages">Teaching Subpages (/teaching-subpages/)</option>
                         </select>
                     </div>
@@ -163,6 +163,59 @@
                 
                     <div class="d-grid">
                         <button id="create-page-btn" class="btn btn-warning btn-lg">Generate & Link Page</button>
+                    </div>
+                </div>-->
+
+                <div class="card p-4 mt-4 shadow-sm">
+                    <h3 class="mb-4"><i class="bi bi-plus-square-fill"></i>Add New Section</h3>
+                    
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Where should this section appear?</label>
+                        <select id="section-location" class="form-select">
+                            <option value="index.html">Home Page</option>
+                            <option value="cv.html">CV Page</option>
+                            <option value="research.html">Research Page</option>
+                            <option value="teaching.html">Teaching Page</option>
+                            <option value="service.html">Service Page</option>
+                            
+                        </select>
+                        <div class="form-text">Choose the main page where this new content will be added.</div>
+                    </div>
+                
+                    <hr>
+                
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Section Heading:</label>
+                        <input type="text" id="section-title" class="form-control" placeholder="e.g., New Research Activities">
+                    </div>
+                
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Section Description (Text):</label>
+                        <textarea id="section-body" class="form-control" rows="4" placeholder="Describe this section..."></textarea>
+                    </div>
+                
+                    <hr>
+                
+                    <div class="row mb-2 rounded mx-0">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Add an Image (Optional):</label>
+                            <input type="file" id="section-image" class="form-control form-control-sm" accept="image/*">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Add a "Learn More" Button?</label>
+                            <select id="has-subpage-button" class="form-select form-select-sm">
+                                <option value="false">No Button (Text only)</option>
+                                <option value="true">Yes, Create a detailed subpage</option>
+                            </select>
+                        </div>
+                    </div>
+                
+                    <div class="d-grid mt-4">
+                        <button id="add-section-btn" class="btn btn-warning btn-lg shadow">
+                            <i class="bi bi-cloud-arrow-up"></i> Add Section to Page
+                        </button>
+                        <small class="text-center text-muted mt-2">This will appear at the bottom of the selected page.</small>
                     </div>
                 </div>
             </div>
