@@ -1,6 +1,5 @@
 import { db } from './firebase-config.js';
-import { doc, getDoc , collection, getDocs } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
+import { doc, getDoc, collection, getDocs, query, where, orderBy} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 // --- PREVIEW MODE DETECTION ---
 // Returns true if the site is sitting inside an <iframe> (like your Admin Dashboard)
 const isPreviewMode = window.self !== window.top;
@@ -62,6 +61,83 @@ async function loadAllVideos() {
     }
 }
 
-loadAllVideos();
+// --- 3. Section Adder -- 
+const SectionRenderer = {
+    async loadSections(pageName) {
+        const container = document.getElementById('dynamic-sections-container');
+        if (!container) {
+            console.error("Could not find the container div in HTML!");
+            return;
+        }
 
+        try {
+            const q = query(
+                collection(db, "page_sections"),
+                where("target_page", "==", pageName),
+                orderBy("createdAt", "asc")
+            );
+
+            const querySnapshot = await getDocs(q);
+            console.log(`Found ${querySnapshot.size} sections for ${pageName}`); // Add this!
+            
+            querySnapshot.forEach((doc) => {
+                console.log("Rendering section:", doc.id); // Add this!
+                const data = doc.data();
+                const sectionHtml = this.createSectionTemplate(data);
+                container.innerHTML += sectionHtml;
+            });
+        } catch (e) {
+            console.error("Firestore Load Error:", e);
+        }
+    },
+
+    createSectionTemplate(data) {
+        return `
+            <section class="py-5 border-bottom">
+                <div class="container">
+                    <div class="row align-items-center">
+                        ${data.image_url ? `
+                            <div class="col-md-5 mb-3 mb-md-0">
+                                <img src="${data.image_url}" class="img-fluid rounded shadow-sm" alt="${data.title}">
+                            </div>
+                        ` : ''}
+                        <div class="${data.image_url ? 'col-md-7' : 'col-12'}">
+                            <h2 class="fw-bold mb-3">${data.title}</h2>
+                            <p class="lead text-muted">${data.body_text}</p>
+                            ${data.has_subpage ? `
+                                <a href="subpage-template.html?id=${data.slug}" class="btn btn-outline-primary">
+                                    Learn More <i class="bi bi-arrow-right"></i>
+                                </a>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        `;
+    }
+};
+// Wrap everything in a listener to ensure the HTML is fully loaded first
+document.addEventListener('DOMContentLoaded', () => {
+    // Detect current filename
+    let currentPage = window.location.pathname.split("/").pop();
+    if (!currentPage || currentPage === "index" || currentPage === "") {
+        currentPage = "index.html";
+    }
+
+    console.log("Page Ready. Loading sections for:", currentPage);
+
+    // Start the processes
+    SectionRenderer.loadSections(currentPage);
+    loadAllVideos();
+    syncFooterYear();
+});
+
+/// Detect current filename (e.g., "index.html" or "research.html")
+const currentPage = window.location.pathname.split("/").pop() || "index.html";
+console.log("📍 Site is trying to load sections for:", currentPage); // Add this!
+// Start the process for the current page
+SectionRenderer.loadSections(currentPage);
+
+
+loadAllVideos();
 syncFooterYear();

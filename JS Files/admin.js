@@ -1,6 +1,11 @@
 import { db, auth, storage } from './firebase-config.js';
-import { doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+// Updated Firestore Imports (Added collection, addDoc, serverTimestamp)
+import { doc, updateDoc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+//  Imports (These are needed for the image upload)
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-storage.js";
+
+
 
 /**
  * -- Global Security -- 
@@ -28,9 +33,14 @@ onAuthStateChanged(auth, (user) => {
         if (isLoginPage) {
             window.location.href = "admin.html";
         } else {
-            // Kick off all features once user is logged in
-            FooterManager.init();
-            VideoManager.init();
+            console.log("User authenticated. Initializing managers...");
+            // Wrap in a try-block to prevent script death
+            try {
+                FooterManager.init();
+                VideoManager.init();
+            } catch (err) {
+                console.error("Manager Initialization Error:", err);
+            }
         }
     }
 });
@@ -94,7 +104,11 @@ const FooterManager = {
     },
 
     updateStatusUI(isSynced) {
-        if (!this.elements.status) return;
+        // GUARD: If the status element doesn't exist, don't try to change it
+        if (!this.elements.status) {
+            console.warn("video-sync-status element not found. Skipping UI update.");
+            return; 
+        }
         if (isSynced) {
             this.elements.status.innerText = "Status: Synced with live site";
             this.elements.status.className = "form-text text-success mt-2";
@@ -145,6 +159,11 @@ const VideoManager = {
     },
 
     updatePreview(url) {
+        // GUARD: If the iframe doesn't exist on this page, just stop here.
+        if (!this.elements.iframe) {
+            console.warn("⚠️ Video preview iframe not found in HTML. Skipping preview update.");
+            return;
+        }
         if (!url) {
             this.elements.iframe.src = "";
             return;
@@ -187,6 +206,11 @@ const VideoManager = {
     },
 
     updateStatusUI(isSynced) {
+        // GUARD: If the status element doesn't exist, don't try to change it
+        if (!this.elements.status) {
+            console.warn("⚠️ video-sync-status element not found. Skipping UI update.");
+            return; 
+        }
         if (isSynced) {
             this.elements.status.innerText = "Status: Synced with live site";
             this.elements.status.className = "form-text text-success mt-2";
@@ -196,7 +220,7 @@ const VideoManager = {
         }
     }
 };
-
+// Section Manager -- This handles adding new sections to pages, including image uploads and draft vs. live logic for each section.
 const SectionManager = {
     elements: {
         location: document.getElementById('section-location'),
@@ -208,6 +232,7 @@ const SectionManager = {
     },
 
     async addSection() {
+        console.log("Starting addSection function...");
         const title = this.elements.title.value;
         const body = this.elements.body.value;
         const location = this.elements.location.value;
@@ -220,35 +245,40 @@ const SectionManager = {
 
         try {
             this.elements.addBtn.disabled = true;
-            this.elements.addBtn.innerText = "Uploading...";
+            this.elements.addBtn.innerText = "Processing...";
 
             let imageUrl = null;
 
-            // 1. Handle Image Upload if it exists
             if (file) {
+                console.log("Image found. Uploading to Storage...");
                 const storageRef = ref(storage, `section_images/${Date.now()}_${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file);
                 imageUrl = await getDownloadURL(snapshot.ref);
+                console.log("Image Uploaded! URL:", imageUrl);
             }
 
-            // 2. Create the Section Document
-            // This goes into 'page_sections' which we will use to populate the main pages
-            await addDoc(collection(db, "page_sections"), {
-                target_page: location, // e.g., 'research.html'
+            console.log("✍️ Attempting Firestore write to 'page_sections'...");
+            
+            // Checkpoint: Is 'db' defined?
+            if (!db) throw new Error("Database (db) is not initialized!");
+
+            const docRef = await addDoc(collection(db, "page_sections"), {
+                target_page: location,
                 title: title,
                 body_text: body,
                 image_url: imageUrl,
                 has_subpage: this.elements.hasButton.value === "true",
-                slug: title.toLowerCase().trim().replace(/\s+/g, '-'), // URL-friendly ID
+                slug: title.toLowerCase().trim().replace(/\s+/g, '-'),
                 createdAt: serverTimestamp()
             });
 
+            console.log("Document created with ID:", docRef.id);
             alert("Section added successfully!");
-            location.reload(); // Refresh to clear form
+            window.location.reload(); 
 
         } catch (e) {
-            console.error("Error adding section:", e);
-            alert("Failed to add section. Check console.");
+            console.error("THE CRASH HAPPENED HERE:", e);
+            alert("Error: " + e.message);
         } finally {
             this.elements.addBtn.disabled = false;
             this.elements.addBtn.innerText = "Add Section to Page";
