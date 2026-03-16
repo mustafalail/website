@@ -92,23 +92,23 @@ const SectionRenderer = {
     },
 
     createSectionTemplate(data) {
+        // Safety check for missing fields
+        const title = data.title || "Untitled Section";
+        const body = data.body_text || "";
+        const img = data.image_url || "";
+
         return `
             <section class="py-5 border-bottom">
                 <div class="container">
                     <div class="row align-items-center">
-                        ${data.image_url ? `
+                        ${img ? `
                             <div class="col-md-5 mb-3 mb-md-0">
-                                <img src="${data.image_url}" class="img-fluid rounded shadow-sm" alt="${data.title}">
+                                <img src="${img}" class="img-fluid rounded shadow-sm" alt="${title}">
                             </div>
                         ` : ''}
-                        <div class="${data.image_url ? 'col-md-7' : 'col-12'}">
-                            <h2 class="fw-bold mb-3">${data.title}</h2>
-                            <p class="lead text-muted">${data.body_text}</p>
-                            ${data.has_subpage ? `
-                                <a href="subpage-template.html?id=${data.slug}" class="btn btn-outline-primary">
-                                    Learn More <i class="bi bi-arrow-right"></i>
-                                </a>
-                            ` : ''}
+                        <div class="${img ? 'col-md-7' : 'col-12'}">
+                            <h2 class="fw-bold mb-3">${title}</h2>
+                            <p class="lead text-muted">${body}</p>
                         </div>
                     </div>
                 </div>
@@ -116,28 +116,32 @@ const SectionRenderer = {
         `;
     }
 };
-// Wrap everything in a listener to ensure the HTML is fully loaded first
-document.addEventListener('DOMContentLoaded', () => {
-    // Detect current filename
-    let currentPage = window.location.pathname.split("/").pop();
-    if (!currentPage || currentPage === "index" || currentPage === "") {
-        currentPage = "index.html";
-    }
+// Function to kick off the logic once the page is ready
+const init = () => {
+    console.log("DOM fully loaded. Starting Firebase logic...");
 
-    console.log("Page Ready. Loading sections for:", currentPage);
+    // 1. Detect current filename
+    let page = window.location.pathname.split("/").pop() || "index.html";
+    if (page === "index" || page === "") page = "index.html";
 
-    // Start the processes
-    SectionRenderer.loadSections(currentPage);
+    console.log("Current Page identified as:", page);
+
+    // 2. Start the Renderers
+    SectionRenderer.loadSections(page);
     loadAllVideos();
     syncFooterYear();
-});
 
-/// Detect current filename (e.g., "index.html" or "research.html")
-const currentPage = window.location.pathname.split("/").pop() || "index.html";
-console.log("📍 Site is trying to load sections for:", currentPage); // Add this!
-// Start the process for the current page
-SectionRenderer.loadSections(currentPage);
+    // 3. THE FORCE-TEST: Let's see if the container is reachable
+    const testContainer = document.getElementById('dynamic-sections-container');
+    if (testContainer) {
+        console.log("Container found! Attempting injection...");
+    } else {
+        console.error("CONTAINER NOT FOUND! Check index.html for ID='dynamic-sections-container'");
+    }
+};
 
+// Listen for the page to be ready
+window.addEventListener('DOMContentLoaded', init);
 
 loadAllVideos();
 syncFooterYear();

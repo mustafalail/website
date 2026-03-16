@@ -1,6 +1,6 @@
 import { db, auth, storage } from './firebase-config.js';
 // Updated Firestore Imports (Added collection, addDoc, serverTimestamp)
-import { doc, updateDoc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { doc, updateDoc, getDoc, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, deleteDoc} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 //  Imports (These are needed for the image upload)
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-storage.js";
@@ -19,7 +19,7 @@ const refreshSitePreview = () => {
         
         // Give Firebase 1 second to finish the write operation
         setTimeout(() => {
-            console.log("🔄 Refreshing staging preview now.");
+            console.log("Refreshing staging preview now.");
             previewFrame.contentWindow.location.reload();
         }, 1000);
     }
@@ -38,6 +38,7 @@ onAuthStateChanged(auth, (user) => {
             try {
                 FooterManager.init();
                 VideoManager.init();
+                SectionManager.init();
             } catch (err) {
                 console.error("Manager Initialization Error:", err);
             }
@@ -282,6 +283,50 @@ const SectionManager = {
         } finally {
             this.elements.addBtn.disabled = false;
             this.elements.addBtn.innerText = "Add Section to Page";
+        }
+    },
+
+   // 1. Load and show the added sections
+   async init() {
+        const list = document.getElementById('manage-sections-list');
+        if (!list) return;
+
+        // Listen for data from Firestore
+        onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
+            list.innerHTML = ""; // Clear the "Loading..." text
+            
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                list.innerHTML += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${data.title}</strong> 
+                            <small class="text-muted ms-2">(${data.target_page})</small>
+                        </div>
+                        <button class="btn btn-danger btn-sm" onclick="deleteSection('${doc.id}')">
+                            Delete
+                        </button>
+                    </div>`;
+            });
+        });
+    }
+};
+
+// This attaches the internal function to the global 'window' object
+window.deleteSection = async (id) => {
+    // 1. Confirm with the user
+    if (confirm("Are you sure you want to delete this section?")) {
+        try {
+            console.log("Attempting to delete section:", id);
+            
+            // 2. The Firebase command
+            await deleteDoc(doc(db, "page_sections", id));
+            
+            // Note: Since you use onSnapshot, the UI will update 
+            // automatically. No need for a page reload!
+        } catch (e) {
+            console.error("Delete Error:", e);
+            alert("Failed to delete section: " + e.message);
         }
     }
 };
