@@ -86,6 +86,20 @@ const SectionRenderer = {
                 const sectionHtml = this.createSectionTemplate(data);
                 container.innerHTML += sectionHtml;
             });
+            
+            //Manual jump logic
+            // After the loop finishes drawing the sections, it checks if there is a #slug in the URL
+            if (window.location.hash) {
+                const targetId = window.location.hash.substring(1); // Removes the '#'
+                const targetElement = document.getElementById(targetId);
+                
+                if (targetElement) {
+                    console.log(`Found anchor, jumping to: ${targetId}`);
+                    // Smooth scroll to the section
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+
         } catch (e) {
             console.error("Firestore Load Error:", e);
         }
@@ -99,7 +113,7 @@ const SectionRenderer = {
         //pull the slug to use as the unique ID for anchor linking
         const sectionId = data.slug || `section-${Math.random().toString(36).substr(2, 9)}`;
         return `
-            <section id="${sectionId}" class="py-5 border-bottom">
+            <section id="${sectionId}" class="py-5 container border-bottom">
                 <div class="container">
                     <div class="row align-items-center">
                         ${img ? `
@@ -132,30 +146,41 @@ const NavManager = {
             );
 
             const querySnapshot = await getDocs(q);
+           
+          // --- SIBLING PATH LOGIC ---
+          const currentPath = window.location.pathname;
+          const isSubpage = currentPath.includes('-subpages');
+          const isInMenu = currentPath.includes('/menu/');
+
+          let basePath = "";
+
+          if (targetPage === 'index.html') {
+              // If we are in ANY folder, go up one level to find index.html
+              basePath = (isSubpage || isInMenu) ? "../index.html" : "./index.html";
+          } 
+          else {
+              // Target is a page like research.html or teaching.html
+              if (isSubpage) {
+                  // We are in 'research-subpages/', need to go UP to root then DOWN to menu
+                  basePath = `../menu/${targetPage}`;
+              } else if (isInMenu) {
+                  // We are already in 'menu/', just stay here
+                  basePath = `./${targetPage}`;
+              } else {
+                  // We are at the root, go down into 'menu/'
+                  basePath = `./menu/${targetPage}`;
+              }
+          }
+
+          querySnapshot.forEach((doc) => {
+              const data = doc.data();
+              if (!data.slug) return;
+
+              const li = document.createElement('li');
+              li.innerHTML = `<a href="${basePath}#${data.slug}" class="dropdown-item text-wrap border-0">${data.title}</a>`;
+              dropdown.appendChild(li);
+          });
             
-            // --- PATH LOGIC ---
-            const isInMenuFolder = window.location.pathname.includes('/menu/');
-            let basePath = targetPage;
-
-            if (!isInMenuFolder && targetPage !== 'index.html') {
-                // We are on index.html, looking for a menu page
-                basePath = `./menu/${targetPage}`;
-            } else if (isInMenuFolder && targetPage === 'index.html') {
-                // We are in menu/, looking for index.html
-                basePath = '../index.html';
-            } else if (isInMenuFolder && targetPage !== 'index.html') {
-                // We are already in menu/, looking for another menu page
-                basePath = `./${targetPage}`;
-            }
-
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                if (!data.slug) return;
-
-                const li = document.createElement('li');
-                li.innerHTML = `<a href="${basePath}#${data.slug}" class="dropdown-item text-wrap">${data.title}</a>`;
-                dropdown.appendChild(li);
-            });
         } catch (e) {
             console.error(`Error syncing nav for ${targetPage}:`, e);
         }
@@ -177,7 +202,7 @@ const init = () => {
     SectionRenderer.loadSections(page);
     // Sync the Nav Bar dropdowns on every page
     NavManager.syncDropdown('research.html', 'nav-research-dropdown');
-    NavManager.syncDropdown('teaching.html', 'nav-teaching-dropdown');
+    NavManager.syncDropdown('teachings.html', 'nav-teachings-dropdown');
     loadAllVideos();
     syncFooterYear();
 
