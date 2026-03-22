@@ -96,9 +96,10 @@ const SectionRenderer = {
         const title = data.title || "Untitled Section";
         const body = data.body_text || "";
         const img = data.image_url || "";
-
+        //pull the slug to use as the unique ID for anchor linking
+        const sectionId = data.slug || `section-${Math.random().toString(36).substr(2, 9)}`;
         return `
-            <section class="py-5 border-bottom">
+            <section id="${sectionId}" class="py-5 border-bottom">
                 <div class="container">
                     <div class="row align-items-center">
                         ${img ? `
@@ -116,18 +117,67 @@ const SectionRenderer = {
         `;
     }
 };
+
+// -- NAVIGATION Menu Bar SYNCING ---
+const NavManager = {
+    async syncDropdown(targetPage, dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+
+        try {
+            const q = query(
+                collection(db, "page_sections"),
+                where("target_page", "==", targetPage),
+                orderBy("createdAt", "asc")
+            );
+
+            const querySnapshot = await getDocs(q);
+            
+            // --- PATH LOGIC ---
+            const isInMenuFolder = window.location.pathname.includes('/menu/');
+            let basePath = targetPage;
+
+            if (!isInMenuFolder && targetPage !== 'index.html') {
+                // We are on index.html, looking for a menu page
+                basePath = `./menu/${targetPage}`;
+            } else if (isInMenuFolder && targetPage === 'index.html') {
+                // We are in menu/, looking for index.html
+                basePath = '../index.html';
+            } else if (isInMenuFolder && targetPage !== 'index.html') {
+                // We are already in menu/, looking for another menu page
+                basePath = `./${targetPage}`;
+            }
+
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (!data.slug) return;
+
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="${basePath}#${data.slug}" class="dropdown-item text-wrap">${data.title}</a>`;
+                dropdown.appendChild(li);
+            });
+        } catch (e) {
+            console.error(`Error syncing nav for ${targetPage}:`, e);
+        }
+    }
+};
+
+
 // Function to kick off the logic once the page is ready
 const init = () => {
     console.log("DOM fully loaded. Starting Firebase logic...");
 
-    // 1. Detect current filename
+    // Detect current filename
     let page = window.location.pathname.split("/").pop() || "index.html";
     if (page === "index" || page === "") page = "index.html";
 
     console.log("Current Page identified as:", page);
 
-    // 2. Start the Renderers
+    // Start the Renderers
     SectionRenderer.loadSections(page);
+    // Sync the Nav Bar dropdowns on every page
+    NavManager.syncDropdown('research.html', 'nav-research-dropdown');
+    NavManager.syncDropdown('teaching.html', 'nav-teaching-dropdown');
     loadAllVideos();
     syncFooterYear();
 
