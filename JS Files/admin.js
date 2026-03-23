@@ -234,11 +234,15 @@ const SectionManager = {
 
     async addSection() {
         console.log("Starting addSection function...");
+
         const title = this.elements.title.value;
         const body = this.elements.body.value;
         const location = this.elements.location.value;
         const file = this.elements.image.files[0];
-        
+        const hasButton = document.getElementById('has-subpage-button').value === "true";
+
+        //const slug = document.getElementById('section-slug').value; // We need this for the URL!
+
         if (!title || !body) {
             alert("Please fill in the Heading and Description.");
             return;
@@ -258,18 +262,18 @@ const SectionManager = {
                 console.log("Image Uploaded! URL:", imageUrl);
             }
 
-            console.log("✍️ Attempting Firestore write to 'page_sections'...");
-            
-            // Checkpoint: Is 'db' defined?
-            if (!db) throw new Error("Database (db) is not initialized!");
+            console.log(" Attempting Firestore write to 'page_sections'...");
+
+            //GENERATE THE SLUG - This converts "My Project Title" -> "my-project-title"
+            const generatedSlug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
 
             const docRef = await addDoc(collection(db, "page_sections"), {
                 target_page: location,
                 title: title,
                 body_text: body,
                 image_url: imageUrl,
-                has_subpage: this.elements.hasButton.value === "true",
-                slug: title.toLowerCase().trim().replace(/\s+/g, '-'),
+                has_subpage: hasButton, // We'll use this key in main.js
+                slug: generatedSlug,
                 createdAt: serverTimestamp()
             });
 
@@ -291,6 +295,21 @@ const SectionManager = {
         const list = document.getElementById('manage-sections-list');
         if (!list) return;
 
+        // --- ADD THE AUTO-SLUGGER HERE ---
+        const titleInput = this.elements.title;
+        const slugInput = document.getElementById('section-slug'); 
+
+        if (titleInput && slugInput) {
+            titleInput.addEventListener('input', () => {
+                const slugValue = titleInput.value
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, '-')           // Replace spaces with -
+                    .replace(/[^\w-]/g, '');        // Remove special chars
+                slugInput.value = slugValue;
+            });
+        }
+
         // Listen for data from Firestore
         onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
             list.innerHTML = ""; // Clear the "Loading..." text
@@ -310,6 +329,8 @@ const SectionManager = {
             });
         });
     }
+    
+
 };
 
 // This attaches the internal function to the global 'window' object

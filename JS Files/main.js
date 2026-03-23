@@ -106,12 +106,36 @@ const SectionRenderer = {
     },
 
     createSectionTemplate(data) {
+        console.log("Checking section data for button:", data.title, "| has_subpage:", data.has_subpage);
         // Safety check for missing fields
         const title = data.title || "Untitled Section";
         const body = data.body_text || "";
         const img = data.image_url || "";
-        //pull the slug to use as the unique ID for anchor linking
-        const sectionId = data.slug || `section-${Math.random().toString(36).substr(2, 9)}`;
+        const sectionId = data.slug || "section";
+
+        // Identify the base name (e.g., 'research' or 'teaching')
+        let pageBase = data.target_page.replace('.html', ''); 
+        // Explicitly handle the 'teachings' vs 'teaching' mismatch
+        if (pageBase === "teachings") {
+            pageBase = "teaching";
+        }
+        // Determine current location to set the correct relative path
+        const currentPath = window.location.pathname;
+        const isInMenuFolder = currentPath.includes('/menu/');
+        const isSubpage = currentPath.includes('-subpages');
+        
+        let buttonLink = "";
+
+        if (isSubpage) {
+            // We are already in a subpage, just link to siblings
+            buttonLink = `./details.html?id=${data.slug}`;
+        } else if (isInMenuFolder) {
+            // We are in 'menu/', go UP then DOWN to sibling folder
+            buttonLink = `../${pageBase}-subpages/details.html?id=${data.slug}`;
+        } else {
+            // We are at root, go DOWN into the subpage folder
+            buttonLink = `./${pageBase}-subpages/details.html?id=${data.slug}`;
+        }
         return `
             <section id="${sectionId}" class="py-5 container border-bottom">
                 <div class="container">
@@ -124,6 +148,14 @@ const SectionRenderer = {
                         <div class="${img ? 'col-md-7' : 'col-12'}">
                             <h2 class="fw-light mb-3">${title}</h2>
                             <p class="lead text-muted">${body}</p>
+
+                            ${data.has_subpage ? `
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
+                                    <a href="${buttonLink}" class="btn btn-outline-secondary btn-lg px-4">
+                                        Learn More
+                                    </a>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
@@ -198,21 +230,71 @@ const init = () => {
 
     console.log("Current Page identified as:", page);
 
-    // Start the Renderers
-    SectionRenderer.loadSections(page);
+    // THE ROUTER: Decide what to render
+    if (page === "details.html") {
+        console.log("Detail Page detected. Loading project details...");
+        DetailRenderer.loadProjectDetails();
+    } else {
+        console.log("Standard Page detected. Loading dynamic sections...");
+        SectionRenderer.loadSections(page);
+    }
+
+  
     // Sync the Nav Bar dropdowns on every page
     NavManager.syncDropdown('research.html', 'nav-research-dropdown');
     NavManager.syncDropdown('teachings.html', 'nav-teachings-dropdown');
     NavManager.syncDropdown('service.html', 'nav-service-dropdown');
+
     loadAllVideos();
     syncFooterYear();
 
-    // 3. THE FORCE-TEST: Let's see if the container is reachable
-    const testContainer = document.getElementById('dynamic-sections-container');
-    if (testContainer) {
-        console.log("Container found! Attempting injection...");
-    } else {
-        console.error("CONTAINER NOT FOUND! Check index.html for ID='dynamic-sections-container'");
+    // LOGGING: Only check for the container if we AREN'T on a details page
+    if (page !== "details.html") {
+        const testContainer = document.getElementById('dynamic-sections-container');
+        if (testContainer) {
+            console.log("Container found! Injecting content...");
+        } else {
+            console.warn("Container 'dynamic-sections-container' not found on this page.");
+        }
+    }
+};
+
+const DetailRenderer = {
+    async loadProjectDetails() {
+        const contentDiv = document.getElementById('detail-content');
+        const loader = document.getElementById('detail-loading');
+        if (!contentDiv) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const projectSlug = params.get('id');
+
+        try {
+            const q = query(collection(db, "page_sections"), where("slug", "==", projectSlug));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                loader.innerHTML = "<h3>Project detail not found.</h3>";
+                return;
+            }
+
+            const data = querySnapshot.docs[0].data();
+
+            // Inject into your custom layout IDs
+            document.getElementById('detail-header-title').innerText = data.title;
+            document.getElementById('detail-body').innerText = data.body_text;
+            
+            const imgElement = document.getElementById('detail-image');
+            if (data.image_url) {
+                imgElement.src = data.image_url;
+                imgElement.classList.remove('d-none');
+            }
+
+            loader.classList.add('d-none');
+            contentDiv.classList.remove('d-none');
+
+        } catch (e) {
+            console.error("Detail Load Error:", e);
+        }
     }
 };
 
