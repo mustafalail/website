@@ -122,7 +122,7 @@ const SectionRenderer = {
                             </div>
                         ` : ''}
                         <div class="${img ? 'col-md-7' : 'col-12'}">
-                            <h2 class="fw-bold mb-3">${title}</h2>
+                            <h2 class="fw-light mb-3">${title}</h2>
                             <p class="lead text-muted">${body}</p>
                         </div>
                     </div>
@@ -203,6 +203,7 @@ const init = () => {
     // Sync the Nav Bar dropdowns on every page
     NavManager.syncDropdown('research.html', 'nav-research-dropdown');
     NavManager.syncDropdown('teachings.html', 'nav-teachings-dropdown');
+    NavManager.syncDropdown('service.html', 'nav-service-dropdown');
     loadAllVideos();
     syncFooterYear();
 
