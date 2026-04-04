@@ -269,25 +269,32 @@ const DetailRenderer = {
         const projectSlug = params.get('id');
 
         try {
+            // 1. Load the main details if it's a dynamic page
             const q = query(collection(db, "page_sections"), where("slug", "==", projectSlug));
             const querySnapshot = await getDocs(q);
 
-            if (querySnapshot.empty) {
-                loader.innerHTML = "<h3>Project detail not found.</h3>";
-                return;
+            if (!querySnapshot.empty) {
+                const data = querySnapshot.docs[0].data();
+                document.getElementById('detail-header-title').innerText = data.title;
+                document.getElementById('detail-body').innerText = data.body_text;
+                
+                const imgElement = document.getElementById('detail-image');
+                if (data.image_url) {
+                    imgElement.src = data.image_url;
+                    imgElement.classList.remove('d-none');
+                }
             }
 
-            const data = querySnapshot.docs[0].data();
-
-            // Inject into your custom layout IDs
-            document.getElementById('detail-header-title').innerText = data.title;
-            document.getElementById('detail-body').innerText = data.body_text;
-            
-            const imgElement = document.getElementById('detail-image');
-            if (data.image_url) {
-                imgElement.src = data.image_url;
-                imgElement.classList.remove('d-none');
+            // 2. Add the "Parking Spot" for the new sections
+            let sectionContainer = document.getElementById('dynamic-sections-container');
+            if (!sectionContainer) {
+                sectionContainer = document.createElement('div');
+                sectionContainer.id = 'dynamic-sections-container';
+                contentDiv.appendChild(sectionContainer); 
             }
+
+            // 3. Load the child sections
+            SectionRenderer.loadSections(projectSlug);
 
             loader.classList.add('d-none');
             contentDiv.classList.remove('d-none');

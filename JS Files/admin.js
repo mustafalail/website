@@ -298,7 +298,28 @@ const SectionManager = {
         // --- ADD THE AUTO-SLUGGER HERE ---
         const titleInput = this.elements.title;
         const slugInput = document.getElementById('section-slug'); 
+        const subpageGroup = document.getElementById('subpage-options');
 
+        if (subpageGroup) {
+            // We listen to ALL sections in the database
+            onSnapshot(collection(db, "page_sections"), (snapshot) => {
+                subpageGroup.innerHTML = ""; // Clear it out
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    
+                    // If this section has a "Learn More" button, it IS a subpage!
+                    // So we add it to the dropdown using its slug as the destination.
+                    if (data.has_subpage) {
+                        const option = document.createElement('option');
+                        option.value = data.slug; // The target becomes the slug!
+                        option.textContent = `↳ Inside: ${data.title}`;
+                        subpageGroup.appendChild(option);
+                    }
+                });
+            });
+        }
+        
         if (titleInput && slugInput) {
             titleInput.addEventListener('input', () => {
                 const slugValue = titleInput.value
@@ -327,9 +348,11 @@ const SectionManager = {
                         </button>
                     </div>`;
             });
+            
         });
+
+        
     }
-    
 
 };
 
