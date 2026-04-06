@@ -23,7 +23,7 @@
           <li class="nav-item">
             <a href="#" class="nav-link d-flex align-items-center col-12 mb-2 mb-lg-0 text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" >Research</a>
               <!--Nav Bar: Research DropDown -->
-              <ul class="dropdown dropdown-menu text-small shadow w-auto text-wrap">
+              <ul id="nav-research-dropdown" class="dropdown dropdown-menu text-small shadow w-auto text-wrap">
                 <li><a class="dropdown-item active text-wrap" href="research.html" aria-current="page">Research</a></li>
                 <li><a class="dropdown-item text-wrap" href="research.html#publications" aria-current="page">Publications</a></li>
                 <li><a class="dropdown-item text-wrap" href="research.html#scholarshipPerspective">Scholarship Perspective</a></li>
@@ -35,7 +35,7 @@
           <li class="nav-item">
             <a href="#" class="nav-link d-flex align-items-center col-lg-4 mb-2 mb-lg-0 text-decoration-none dropdown-toggle">Teaching</a>
             <!--Nav Bar: Teaching DropDown-->
-            <ul class="dropdown dropdown-menu text-small shadow">
+            <ul id="nav-teachings-dropdown" class="dropdown dropdown-menu text-small shadow">
               <li><a class="dropdown-item active text-wrap" href="teachings.html" aria-current="page">Teaching</a></li>
               <li><a class="dropdown-item text-wrap" href="teachings.html#teaching-philosophy" aria-current="page">Teaching Philosophy</a></li>
               <li><a class="dropdown-item text-wrap" href="teachings.html#curriculum-development">Curriculum and Course Development</a></li>
@@ -54,10 +54,21 @@
               <li><a class="dropdown-item text-wrap" href="teachings.html#leadership-vision">Leadership and Vision for the Future</a></li>
               <li><a class="dropdown-item text-wrap" href ="teachings.html#programming-lang">Igniting Innovation: Crafting Custom Programming Languages</a></li>
               <li><a class="dropdown-item text-wrap" href="teachings.html#instruction-act-aries" >Instruction of Honor, Act-On-Idea, and ARIES Incubatorship Projects</a></li>
-              <li><a class="dropdown-item text-wrap" href="teachings.html#student-comments">Student Reviews</a></li>              
+              <li><a class="dropdown-item text-wrap" href="teachings.html#student-comments">Student Reviews</a></li>           
             </ul>
           </li>          
-          <li class="nav-item"><a href="service.html" class="nav-link">Service</a></li>
+          <li class="nav-item">
+            <a href="#" class="nav-link d-flex align-items-center col-lg-4 mb-2 mb-lg-0 text-decoration-none dropdown-toggle">Service</a>
+             <!--Nav Bar: Service DropDown-->
+             <ul id="nav-service-dropdown" class="dropdown dropdown-menu text-small shadow">
+              <li><a class="dropdown-item active text-wrap" href="service.html" aria-current="page">Service</a></li>
+              <li><a class="dropdown-item text-wrap" href="service.html#scientific-community-service" aria-current="page">Scientific Community Service</a></li>
+              <li><a class="dropdown-item text-wrap" href="service.html#memberships" aria-current="page">Memberships</a></li>
+              <li><a class="dropdown-item text-wrap" href="service.html#judging-invited-talks" aria-current="page">Judging, Invited Talks, and Similar Functions</a></li>
+              <li><a class="dropdown-item text-wrap" href="service.html#miscellaneous-service" aria-current="page">Miscellaneous Service</a></li>
+              <li><a class="dropdown-item text-wrap" href="service.html#future-service-leadership-aspirations" aria-current="page">Future Service and Leadership Aspirations</a></li>
+            </ul>
+          </li>
           <li class="nav-item"><a href="https://www.tamiu.edu/coas/soen/index.shtml" class="nav-link">School of Engineering</a></li>
         </ul>
       </header>
@@ -84,13 +95,13 @@
       <hr>
     </div>
      <!-- * Section: Scientific Community Service *-->
-    <div>
+    <div id="scientific-community-service">
       <h2 class="fw-light link-body-emphasis mb-1">Scientific Community Service</h2>
       <p class="lead">Since 2021, I have been a member of the Steering Committee for the Consortium for Computing Sciences in Colleges (CCSC): South Central Region. During my tenure, I have assumed the roles of regional editor and co-chair for papers. As such, I have made valuable contributions to the editorial process of Volume 37, No.7, and Volume 38, No.7 of the Journal of Computing Sciences in Colleges. Additionally, I have been on the program committee of some computer science conferences and journals. </p>
       <hr>
     </div>
     <!-- *Section: Memberships -->  
-    <div>
+    <div id="memberships">
       <h2 class="fw-light link-body-emphasis">Memberships</h2>
       <p class="lead">Since joining TAMIU in Fall 2018, I have served in many committees that are summarized in the table below.</p>
 
@@ -185,7 +196,7 @@
       <hr>
     </div>  
       <!-- * Section:  Judging, Invited Talks, and Similar Functions * -->
-    <div>
+    <div id="judging-invited-talks">
       <h2 class="fw-light">Judging, Invited Talks, and Similar Functions</h2>
       <p class="lead"> I volunteered in or was invited to the events showed in the table below. </p>
             <!-- *** Webpage: TABLE 8 Listing of Judging, Invited Talks, and Similar Duties -->
@@ -266,7 +277,7 @@
     </div>
 
     <!-- * Section: Miscellaneous Service * -->
-    <div>
+    <div id="miscellaneous-service">
       <h2 class="fw-light link-body-emphasis mb-1">Miscellaneous Service</h2>
       <p class="lead">I have developed a style of mentoring undergraduate researchers that has been well-received by students and faculty at TAMIU and the Texas A&M System Louis Stokes Alliance for Minority Participation (TAMUS LSAMP) symposium. I have shared my experience with others through presentations and workshops.</p>
       <p class="lead">I established and have been advising the Computer Science & Engineering Association (CSEA) at Texas A&M International University since Fall 2019. The club aims to build and sustain a community of students at TAMIU who are interested in computer science and engineering.</p>
@@ -274,14 +285,15 @@
       <hr>
     </div>
     <!-- * Section: Future Service and Leadership Aspirations * -->
-    <div>
+    <div id="future-service-leadership-aspirations">
       <h2 class="fw-light" >Future Service and Leadership Aspirations</h2>
       <p class="lead">My commitment to academic excellence extends beyond my current accomplishments. In my 2019 Leadership Experience Program statement, I outlined seven aspirations for my professional development at TAMIU. I am pleased to report that I have already made significant progress towards achieving two of these goals: the successful development and implementation of the Bachelor of Science in Computer Engineering program and the attainment of ABET accreditation for this program.</p>
       <p class="lead">My next set of goals focuses on expanding the academic offerings within the department, including the creation of interdisciplinary computer science programs, such as "Computer Science + [X]" where "X" represents another field like biology, business, or cybersecurity. Furthermore, I envision the establishment of a dedicated Department of Computer Science and Engineering to better support our growing programs and faculty. Finally, I aspire to develop a graduate program in Computer Science and Engineering, providing advanced educational opportunities for our students. I am confident that these goals will be achieved within the next five years through continued collaboration, innovation, and dedication to academic excellence.</p>
     </div>
-
   </div>
 </section>
+
+<div id="dynamic-sections-container"></div>
 
 <!-- *** Webpage: Footer *** -->
 <section>

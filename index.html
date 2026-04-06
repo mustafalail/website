@@ -30,19 +30,20 @@
           <li class="nav-item">
             <p class="nav-link d-flex align-items-center col-12 mb-2 mb-lg-0 text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Research</p>
               <!--Nav Bar: Research DropDown -->
-              <ul class="dropdown dropdown-menu text-small shadow w-auto text-wrap">
+              <ul id="nav-research-dropdown" class="dropdown dropdown-menu text-small shadow w-auto text-wrap">
                 <li><a href="./menu/research.html" class="dropdown-item active text-wrap">Research</a></li>
                 <li><a href="./menu/research.html#publications" class="dropdown-item text-wrap">Publications</a></li>
                 <li><a href="./menu/research.html#scholarshipPerspective" class="dropdown-item text-wrap">Scholarship Perspective</a></li>
                 <li><a  href="./menu/research.html#scholarNomination" class="dropdown-item text-wrap">Scholar of the Year Nomination</a></li>
                 <li><a href="./menu/research.html#researchAreas" class="dropdown-item text-wrap" >Research Areas</a></li>
                 <li><a href="./menu/research.html#grants" class="dropdown-item text-wrap" >Grants</a></li>
+  
               </ul>
           </li>
           <li class="nav-item">
             <p class="nav-link d-flex align-items-center col-12 mb-2 mb-lg-0 text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Teaching</p>
              <!--Nav Bar: Teaching DropDown-->
-            <ul class="dropdown dropdown-menu text-small shadow w-auto text-wrap">
+            <ul id="nav-teachings-dropdown" class="dropdown dropdown-menu text-small shadow w-auto text-wrap">
               <li><a href ="./menu/teachings.html" class="dropdown-item active text-wrap">Teaching</a></li>
               <li><a href ="./menu/teachings.html#teaching-philosophy" class="dropdown-item text-wrap">Teaching Philosophy</a></li>
               <li><a href ="./menu/teachings.html#curriculum-development" class="dropdown-item text-wrap">Curriculum and Course Development</a></li>
@@ -64,7 +65,18 @@
               <li><a href ="./menu/teachings.html#student-comments" class="dropdown-item text-wrap">Student Reviews</a></li>
             </ul>
           </li>          
-          <li class="nav-item"><a href="./menu/service.html" class="nav-link">Service</a></li>
+          <li class="nav-item">
+            <a href="#" class="nav-link d-flex align-items-center col-lg-4 mb-2 mb-lg-0 text-decoration-none dropdown-toggle">Service</a>
+             <!--Nav Bar: Service DropDown-->
+             <ul id="nav-service-dropdown" class="dropdown dropdown-menu text-small shadow">
+              <li><a class="dropdown-item active text-wrap" href="./menu/service.html" aria-current="page">Service</a></li>
+              <li><a class="dropdown-item text-wrap" href="./menu/service.html#scientific-community-service" aria-current="page">Scientific Community Service</a></li>
+              <li><a class="dropdown-item text-wrap" href="./menu/service.html#memberships" aria-current="page">Memberships</a></li>
+              <li><a class="dropdown-item text-wrap" href="./menu/service.html#judging-invited-talks" aria-current="page">Judging, Invited Talks, and Similar Functions</a></li>
+              <li><a class="dropdown-item text-wrap" href="./menu/service.html#miscellaneous-service" aria-current="page">Miscellaneous Service</a></li>
+              <li><a class="dropdown-item text-wrap" href="./menu/service.html#future-service-leadership-aspirations" aria-current="page">Future Service and Leadership Aspirations</a></li>
+            </ul>
+          </li>
           <li class="nav-item"><a href="https://www.tamiu.edu/coas/soen/index.shtml" class="nav-link">School of Engineering</a></li>
         </ul>
           
@@ -227,7 +239,7 @@
     <div style="text-align:center">
       <h1 class="text-body-emphasis text-center py-4">PHD Graduation Ceremony</h1>
       <div class="ratio ratio-16x9 mx-auto shadow" style="max-width: 760px;">
-         <iframe src="https://www.youtube.com/embed/mEeu4NdqWHw?si=5emKko2hLYgIL9HD" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+         <iframe id="home_grad_video"src="https://www.youtube.com/embed/mEeu4NdqWHw?si=5emKko2hLYgIL9HD" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       </div> 
     </div>
     <p class="lead pt-4 pb-2" style="text-align:center">View the day Dr. Mustafa Al Lail was hooded in his PHD Graduation ceremony.</p>
@@ -325,6 +337,8 @@
       </div>
     </div>
 </section>
+
+<div id="dynamic-sections-container"></div>
 
 <!-- **** DISCLAIMER **** -->
 <section class="bg-body-tertiary p-5">

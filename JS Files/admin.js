@@ -1,72 +1,454 @@
-import { db, auth } from './firebase-config.js';
-import { doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { db, auth, storage } from './firebase-config.js';
+// Updated Firestore Imports (Added collection, addDoc, serverTimestamp)
+import { doc, updateDoc, getDoc, collection, addDoc, serverTimestamp, query, where, setDoc, orderBy, onSnapshot, deleteDoc} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+//  Imports (These are needed for the image upload)
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-storage.js";
 
-// Check if user is authenticated on page load
-onAuthStateChanged(auth, (user) => {
-    //Checks what page the user is currently looking at
-    const isLoginPage = window.location.pathname.includes("login.html");
 
-    if (!user) {
-        // Only redirects to login if the user isn't already there
-        if (!isLoginPage) {
-            console.log("Not logged in. Redirecting to login page...");
-            window.location.href = "login.html";
-        }
+
+/**
+ * -- Global Security -- 
+ * This remains at the top level because it controls access to the entire page.
+ */
+
+const refreshSitePreview = () => {
+    const previewFrame = document.getElementById('site-preview');
+    if (previewFrame) {
+        console.log("Refreshing staging preview...");
+        
+        // Give Firebase 1 second to finish the write operation
+        setTimeout(() => {
+            console.log("Refreshing staging preview now.");
+            previewFrame.contentWindow.location.reload();
+        }, 1000);
     }
-    else {
-        // If the user is logged in but try to visit login.html, send them to the dashboard
+};
+
+onAuthStateChanged(auth, (user) => {
+    const isLoginPage = window.location.pathname.includes("login.html");
+    if (!user) {
+        if (!isLoginPage) window.location.href = "login.html";
+    } else {
         if (isLoginPage) {
             window.location.href = "admin.html";
         } else {
-            // Otherwise, load the protected data
-            loadCurrentSettings();
+            console.log("User authenticated. Initializing managers...");
+            // Wrap in a try-block to prevent script death
+            try {
+                FooterManager.init();
+                VideoManager.init();
+                SectionManager.init();
+            } catch (err) {
+                console.error("Manager Initialization Error:", err);
+            }
         }
     }
 });
-// --- LOAD FUNCTION: Loads current year ---
-async function loadCurrentSettings() {
-    const yearInput = document.getElementById('year-input');
-    const footerRef = doc(db, "global_config", "footer_year_info");
 
-    try {
-        const docSnap = await getDoc(footerRef);
-        if (docSnap.exists()) {
-            // This line puts the cloud data directly into the input box
-            yearInput.value = docSnap.data().copyright_year;
-            console.log("Current settings loaded from cloud.");
+/**
+ * -- Footer Year Feature --
+ * Has the Draft vs. Live logic and UI status indicators
+ */
+const FooterManager = {
+    ref: doc(db, "global_config", "footer_year_info"),
+    elements: {
+        input: document.getElementById('year-input'),
+        preview: document.getElementById('preview-year'),
+        status: document.getElementById('sync-status')
+    },
+
+    async init() {
+        try {
+            const docSnap = await getDoc(this.ref);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                // Default to draft_year, fallback to copyright_year
+                const currentDraft = data.draft_year || data.copyright_year;
+                
+                if (this.elements.input) this.elements.input.value = currentDraft;
+                if (this.elements.preview) this.elements.preview.innerText = currentDraft;
+                
+                this.updateStatusUI(data.draft_year === data.copyright_year);
+            }
+        } catch (e) { console.error("Footer Load Error:", e); }
+    },
+
+    async saveDraft() {
+        const newVal = this.elements.input.value;
+        try {
+            await updateDoc(this.ref, { draft_year: newVal });
+            
+            this.elements.preview.innerText = newVal;
+            this.updateStatusUI(false);
+
+            refreshSitePreview();
+
+            alert("Draft updated! Review the preview before publishing.");
+        } catch (e) { console.error("Save Draft Error:", e); }
+    
+    },
+
+    async publishLive() {
+        try {
+            const docSnap = await getDoc(this.ref);
+            if (docSnap.exists()) {
+                const draftVal = docSnap.data().draft_year;
+                await updateDoc(this.ref, { copyright_year: draftVal });
+                this.updateStatusUI(true);
+
+                refreshSitePreview();
+
+                alert("Success! The main website is now updated.");
+            }
+        } catch (e) { console.error("Publish Error:", e); }
+    },
+
+    updateStatusUI(isSynced) {
+        // GUARD: If the status element doesn't exist, don't try to change it
+        if (!this.elements.status) {
+            console.warn("video-sync-status element not found. Skipping UI update.");
+            return; 
         }
-    } catch (error) {
-        console.error("Error loading settings:", error);
+        if (isSynced) {
+            this.elements.status.innerText = "Status: Synced with live site";
+            this.elements.status.className = "form-text text-success mt-2";
+        } else {
+            this.elements.status.innerText = "Status: Changes pending (Not Live)";
+            this.elements.status.className = "form-text text-warning mt-2 fw-bold";
+        }
     }
-}
+};
+/**
+ * -- Video Settings --
+ * Handles multiple video entries, each with its own draft vs. live logic and preview.
+ */
+const VideoManager = {
+    activeDocId: 'video_content|home_grad_video', 
 
-const saveBtn = document.getElementById('save-settings');
+    elements: {
+        selector: document.getElementById('video-selector'),
+        input: document.getElementById('video-input'),
+        iframe: document.getElementById('video-preview-iframe'),
+        status: document.getElementById('video-sync-status')
+    },
 
-saveBtn.addEventListener('click', async () => {
-    const newYear = document.getElementById('year-input').value;
-    const footer_year_infoRef = doc(db, "global_config", "footer_year_info");
+    async init() {
+        if (!this.elements.selector) return;
 
-    try{
-        await updateDoc(footer_year_infoRef, {
-            copyright_year: newYear
+        const dynamicVideoGroup = document.getElementById('dynamic-video-options');
+        if (dynamicVideoGroup) {
+            onSnapshot(collection(db, "page_sections"), (snapshot) => {
+                dynamicVideoGroup.innerHTML = ""; 
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.video_url) {
+                        const option = document.createElement('option');
+                        option.value = `page_sections|${doc.id}`; 
+                        option.textContent = `↳ Section: ${data.title}`;
+                        dynamicVideoGroup.appendChild(option);
+                    }
+                });
+            });
+        }
+
+        await this.loadVideoData();
+
+        this.elements.selector.addEventListener('change', (e) => {
+            this.activeDocId = e.target.value;
+            this.loadVideoData();
         });
-        alert("Copyright year updated successfully!");
-    }
-    catch (error) {
-        console.error("Error updating document: ", error);
-        alert("Failed to update copyright year. Please try again.");
-    }
-});
 
-//Sign out functionality
-const logoutBtn = document.getElementById('logout-btn');
-logoutBtn.addEventListener('click', async () => {
+        document.getElementById('save-video-draft')?.addEventListener('click', () => this.saveDraft());
+        document.getElementById('publish-video-live')?.addEventListener('click', () => this.publishLive());
+    },
+
+    async loadVideoData() {
+        const [collectionName, docId] = this.activeDocId.split('|');
+        const videoRef = doc(db, collectionName, docId);
+        const docSnap = await getDoc(videoRef);
+        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            let currentVideo = "";
+            
+            if (collectionName === "video_content") {
+                currentVideo = data.draft_url || data.live_url || "";
+                this.updateStatusUI(data.draft_url === data.live_url);
+            } else {
+                currentVideo = data.video_url || "";
+                this.updateStatusUI(true); 
+            }
+            
+            this.elements.input.value = currentVideo;
+            this.updatePreview(currentVideo);
+        } else {
+            //  If the document doesn't exist yet, clear the boxes so it doesn't look stuck!
+            this.elements.input.value = "";
+            this.updatePreview("");
+            this.updateStatusUI(false);
+        }
+    },
+
+    updatePreview(url) {
+        if (!this.elements.iframe) return;
+        if (!url) {
+            this.elements.iframe.src = "";
+            return;
+        }
+
+        let finalUrl = url;
+        // Smart Passthrough (Allows Echo360 and formats YouTube)
+        if (finalUrl.includes("youtube.com/watch?v=")) {
+            finalUrl = finalUrl.replace("watch?v=", "embed/").split("&")[0];
+        } else if (finalUrl.includes("youtu.be/")) {
+            finalUrl = finalUrl.replace("youtu.be/", "youtube.com/embed/").split("?")[0];
+        }
+
+        this.elements.iframe.src = finalUrl;
+    },
+
+    async saveDraft() {
+        const [collectionName, docId] = this.activeDocId.split('|');
+        const newVal = this.elements.input.value;
+
+        if (collectionName === "video_content") {
+            const videoRef = doc(db, collectionName, docId);
+            // setDoc with merge prevents the crash/freeze!
+            await setDoc(videoRef, { draft_url: newVal }, { merge: true });
+            this.updateStatusUI(false);
+            alert(`Draft saved!`);
+        } else {
+            this.updateStatusUI(false); 
+        }
+        
+        this.updatePreview(newVal);
+    },
+
+    async publishLive() {
+        const [collectionName, docId] = this.activeDocId.split('|');
+        const videoRef = doc(db, collectionName, docId);
+
+        if (collectionName === "video_content") {
+            const docSnap = await getDoc(videoRef);
+            const draftVal = (docSnap.exists() && docSnap.data().draft_url) 
+                             ? docSnap.data().draft_url 
+                             : this.elements.input.value;
+            //Doc prevents crash
+            await setDoc(videoRef, { live_url: draftVal }, { merge: true });
+        } else {
+            const newVal = this.elements.input.value;
+            // setDoc prevents crash
+            await setDoc(videoRef, { video_url: newVal }, { merge: true });
+        }
+
+        this.updateStatusUI(true);
+        alert("This video is now LIVE on the website.");
+    },
+
+    updateStatusUI(isSynced) {
+        if (!this.elements.status) return;
+        if (isSynced) {
+            this.elements.status.innerText = "Status: Synced with live site";
+            this.elements.status.className = "form-text text-success mt-2";
+        } else {
+            this.elements.status.innerText = "Status: Changes pending (Not Live)";
+            this.elements.status.className = "form-text text-warning mt-2 fw-bold";
+        }
+    }
+};
+// Section Manager -- This handles adding new sections to pages, including image uploads and draft vs. live logic for each section.
+const SectionManager = {
+    elements: {
+        location: document.getElementById('section-location'),
+        title: document.getElementById('section-title'),
+        body: document.getElementById('section-body'),
+        image: document.getElementById('section-image'),
+        hasButton: document.getElementById('has-subpage-button'),
+        addBtn: document.getElementById('add-section-btn')
+    },
+
+    async addSection() {
+        console.log("Starting addSection function...");
+
+        const title = this.elements.title.value;
+        const body = this.elements.body.value;
+        const location = this.elements.location.value;
+        const file = this.elements.image.files[0];
+
+        // Grab the specific IDs with "Null Checks" (This stops the crash!)
+        const buttonEl = document.getElementById('has-subpage-button');
+        const hasButton = buttonEl ? (buttonEl.value === "true") : false;
+
+        const alignEl = document.getElementById('image-alignment');
+        const imageAlignment = alignEl ? alignEl.value : "left"; // Defaults to left if HTML is missing
+
+        const slugEl = document.getElementById('section-slug');
+        const generatedSlug = slugEl ? slugEl.value : title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
+        // Grab the Video URL safely
+        const videoEl = document.getElementById('section-video');
+        const videoUrl = videoEl ? videoEl.value.trim() : "";
+
+        //const slug = document.getElementById('section-slug').value; // We need this for the URL!
+
+        if (!title || !body) {
+            alert("Please fill in the Heading and Description.");
+            return;
+        }
+
+        try {
+            
+
+            this.elements.addBtn.disabled = true;
+            this.elements.addBtn.innerText = "Processing...";
+
+            let imageUrl = null;
+
+            if (file) {
+                console.log("Image found. Uploading to Storage...");
+                const storageRef = ref(storage, `section_images/${Date.now()}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                imageUrl = await getDownloadURL(snapshot.ref);
+                console.log("Image Uploaded! URL:", imageUrl);
+            }
+
+            console.log(" Attempting Firestore write to 'page_sections'...");
+
+            //GENERATE THE SLUG - This converts "My Project Title" -> "my-project-title"
+            //const generatedSlug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
+            const docRef = await addDoc(collection(db, "page_sections"), {
+                target_page: location,
+                title: title,
+                body_text: body,
+                image_url: imageUrl,
+                image_alignment: imageAlignment,
+                video_url: videoUrl,
+                has_subpage: hasButton, // We'll use this key in main.js
+                slug: generatedSlug,
+                createdAt: serverTimestamp()
+            });
+
+            console.log("Document created with ID:", docRef.id);
+            alert("Section added successfully!");
+            window.location.reload(); 
+
+        } catch (e) {
+            console.error("THE CRASH HAPPENED HERE:", e);
+            alert("Error: " + e.message);
+        } finally {
+            this.elements.addBtn.disabled = false;
+            this.elements.addBtn.innerText = "Add Section to Page";
+        }
+    },
+
+   // 1. Load and show the added sections
+   async init() {
+        const list = document.getElementById('manage-sections-list');
+        if (!list) return;
+
+        // --- ADD THE AUTO-SLUGGER HERE ---
+        const titleInput = this.elements.title;
+        const slugInput = document.getElementById('section-slug'); 
+        const subpageGroup = document.getElementById('subpage-options');
+
+        if (subpageGroup) {
+            // We listen to ALL sections in the database
+            onSnapshot(collection(db, "page_sections"), (snapshot) => {
+                subpageGroup.innerHTML = ""; // Clear it out
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    
+                    // If this section has a "Learn More" button, it IS a subpage!
+                    // So we add it to the dropdown using its slug as the destination.
+                    if (data.has_subpage) {
+                        const option = document.createElement('option');
+                        option.value = data.slug; // The target becomes the slug!
+                        option.textContent = `↳ Inside: ${data.title}`;
+                        subpageGroup.appendChild(option);
+                    }
+                });
+            });
+        }
+        
+        if (titleInput && slugInput) {
+            titleInput.addEventListener('input', () => {
+                const slugValue = titleInput.value
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, '-')           // Replace spaces with -
+                    .replace(/[^\w-]/g, '');        // Remove special chars
+                slugInput.value = slugValue;
+            });
+        }
+
+        // Listen for data from Firestore
+        onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
+            list.innerHTML = ""; // Clear the "Loading..." text
+            
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                list.innerHTML += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${data.title}</strong> 
+                            <small class="text-muted ms-2">(${data.target_page})</small>
+                        </div>
+                        <button class="btn btn-danger btn-sm" onclick="deleteSection('${doc.id}')">
+                            Delete
+                        </button>
+                    </div>`;
+            });
+            
+        });
+
+        
+    }
+
+};
+
+// This attaches the internal function to the global 'window' object
+window.deleteSection = async (id) => {
+    // 1. Confirm with the user
+    if (confirm("Are you sure you want to delete this section?")) {
+        try {
+            console.log("Attempting to delete section:", id);
+            
+            // 2. The Firebase command
+            await deleteDoc(doc(db, "page_sections", id));
+            
+            // Note: Since you use onSnapshot, the UI will update 
+            // automatically. No need for a page reload!
+        } catch (e) {
+            console.error("Delete Error:", e);
+            alert("Failed to delete section: " + e.message);
+        }
+    }
+};
+
+/**
+ * -- Event Listeners -- 
+ */
+
+// Footer Feature Listeners
+document.getElementById('save-draft')?.addEventListener('click', () => FooterManager.saveDraft());
+document.getElementById('publish-live')?.addEventListener('click', () => FooterManager.publishLive());
+
+// Video Content Listeners
+// 1. Update Preview (Save Draft)
+document.getElementById('save-video-draft')?.addEventListener('click', () => { VideoManager.saveDraft();});
+// 2. Publish to Live Site
+document.getElementById('publish-video-live')?.addEventListener('click', () => {VideoManager.publishLive();});
+
+// New Section Listeners
+document.getElementById('add-section-btn')?.addEventListener('click', () => SectionManager.addSection());
+
+// Sign Out Logic
+document.getElementById('logout-btn')?.addEventListener('click', async () => {
     try {
         await signOut(auth);
-        console.log("User signed out successfully.");
-
-    } catch (error) {
-        console.error("Logout Error:", error);
-    }
+        console.log("User signed out.");
+    } catch (e) { console.error("Logout Error:", e); }
 });
