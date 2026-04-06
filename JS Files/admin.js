@@ -11,7 +11,7 @@ import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/fireba
  * -- Global Security -- 
  * This remains at the top level because it controls access to the entire page.
  */
-
+// This function is used to refresh the staging preview iframe after changes are made.
 const refreshSitePreview = () => {
     const previewFrame = document.getElementById('site-preview');
     if (previewFrame) {
@@ -24,7 +24,8 @@ const refreshSitePreview = () => {
         }, 1000);
     }
 };
-
+// Listen for auth state changes
+//this is the main gatekeeper that checks if the user is logged in or not, and redirects accordingly. It also initializes the managers if the user is authenticated.
 onAuthStateChanged(auth, (user) => {
     const isLoginPage = window.location.pathname.includes("login.html");
     if (!user) {
@@ -57,7 +58,8 @@ const FooterManager = {
         preview: document.getElementById('preview-year'),
         status: document.getElementById('sync-status')
     },
-
+    //this function loads the current year from Firestore and populates the input and preview. 
+    //It also sets the status indicator based on whether the draft and live years match.
     async init() {
         try {
             const docSnap = await getDoc(this.ref);
@@ -125,7 +127,7 @@ const FooterManager = {
  */
 const VideoManager = {
     activeDocId: 'video_content|home_grad_video', 
-
+    
     elements: {
         selector: document.getElementById('video-selector'),
         input: document.getElementById('video-input'),
@@ -258,6 +260,7 @@ const VideoManager = {
     }
 };
 // Section Manager -- This handles adding new sections to pages, including image uploads and draft vs. live logic for each section.
+// It also loads the existing sections into the management list and allows deletion.
 const SectionManager = {
     elements: {
         location: document.getElementById('section-location'),

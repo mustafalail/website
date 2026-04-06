@@ -1,6 +1,7 @@
 import { db } from './firebase-config.js';
 import { doc, getDoc, collection, getDocs, query, where, orderBy} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-// --- PREVIEW MODE DETECTION ---
+
+// --- PREVIEW MODE  ---
 // Returns true if the site is sitting inside an <iframe> (like your Admin Dashboard)
 const isPreviewMode = window.self !== window.top;
 if (isPreviewMode) {
@@ -8,9 +9,10 @@ if (isPreviewMode) {
 }
 
 // --- 1. SYNC FOOTER YEAR ---
+// Fetches a single document that contains the current year for the footer. 
 async function syncFooterYear() {
     try {
-        // ID must matches Firebase console exactly
+        // Point specifically to the "footer_year_info" document inside the "global_config" 
         const docRef = doc(db, "global_config", "footer_year_info");
         const docSnap = await getDoc(docRef);
 
@@ -20,7 +22,7 @@ async function syncFooterYear() {
             // DECISION POINT: Use draft_year if in preview mode, otherwise use copyright_year
             const yearToShow = isPreviewMode ? (data.draft_year || data.copyright_year) : data.copyright_year;
             
-            // This updates the CSS year variable
+            // This updates the CSS year variable 
             document.documentElement.style.setProperty('--current-year', `"${yearToShow}"`);
             
             console.log("Footer year synced from cloud:", yearToShow);
@@ -30,12 +32,14 @@ async function syncFooterYear() {
     }
 }
 // --- 2. LOAD ALL VIDEOS ---
+// Iterates through the video_content collection and pairs database URLS with the matching HTML iframes
 async function loadAllVideos() {
     try {
         console.log("Attempting to fetch videos from 'video_content'...");
         const querySnapshot = await getDocs(collection(db, "video_content"));
         
         querySnapshot.forEach((doc) => {
+            // Looks for an HTML ID that matches the database document ID
             const videoElement = document.getElementById(doc.id);
             
             if (videoElement) {
@@ -45,13 +49,14 @@ async function loadAllVideos() {
                 if (urlToShow) {
                     let finalUrl = urlToShow;
                     
-                    // 🚀 NEW: Smart Passthrough applies to live site too!
+                    // Formats youtube links to embed mode if they arent already in that format
+                    // if the link is not a youtube link (echo260) it skips and just uses the URL as is.
                     if (finalUrl.includes("youtube.com/watch?v=")) {
                         finalUrl = finalUrl.replace("watch?v=", "embed/").split("&")[0];
                     } else if (finalUrl.includes("youtu.be/")) {
                         finalUrl = finalUrl.replace("youtu.be/", "youtube.com/embed/").split("?")[0];
                     }
-
+                    // assigns the final URL to the iframe src, which will load the video
                     videoElement.src = finalUrl;
                 }
             }
@@ -62,7 +67,9 @@ async function loadAllVideos() {
 }
 
 // --- 3. Section Adder -- 
+// an object responsible for fetching content sections from firebase and building the html layout
 const SectionRenderer = {
+    // queries the database for sections that belong on the current page
     async loadSections(pageName) {
         const container = document.getElementById('dynamic-sections-container');
         if (!container) {
@@ -71,6 +78,7 @@ const SectionRenderer = {
         }
 
         try {
+            //build a query asking firebase for all documents where the targetpage matches the current URL
             const q = query(
                 collection(db, "page_sections"),
                 where("target_page", "==", pageName),
@@ -81,7 +89,7 @@ const SectionRenderer = {
             console.log(`Found ${querySnapshot.size} sections for ${pageName}`); // Add this!
             
             querySnapshot.forEach((doc) => {
-                console.log("Rendering section:", doc.id); // Add this!
+                console.log("Rendering section:", doc.id); 
                 const data = doc.data();
                 const sectionHtml = this.createSectionTemplate(data);
                 container.innerHTML += sectionHtml;
@@ -104,7 +112,8 @@ const SectionRenderer = {
             console.error("Firestore Load Error:", e);
         }
     },
-
+    // This function takes in the data for a section and returns a formatted HTML string. 
+    //It includes logic for handling missing data, image alignment, video formatting, and button linking based on the section's target page.
     createSectionTemplate(data) {
         console.log("Checking section data for button:", data.title, "| has_subpage:", data.has_subpage);
         // Safety check for missing fields
@@ -196,6 +205,7 @@ const SectionRenderer = {
 };
 
 // -- NAVIGATION Menu Bar SYNCING ---
+// Responsible for fetching the section titles and slugs for each main page and injecting them into the corresponding dropdown menu in the nav bar.
 const NavManager = {
     async syncDropdown(targetPage, dropdownId) {
         const dropdown = document.getElementById(dropdownId);
@@ -252,6 +262,8 @@ const NavManager = {
 
 
 // Function to kick off the logic once the page is ready
+// This function detects the current page, decides what content to load, and ensures that the nav bars are synced on every page. 
+//It also includes logging to help trace the flow of execution and identify any issues.
 const init = () => {
     console.log("DOM fully loaded. Starting Firebase logic...");
 
@@ -289,7 +301,9 @@ const init = () => {
         }
     }
 };
-
+// --- DETAIL PAGE RENDERER ---
+// Responsible for loading the main project details and then invoking the SectionRenderer to load the child sections.
+//It also handles the loading state and error handling for the details page.
 const DetailRenderer = {
     async loadProjectDetails() {
         const contentDiv = document.getElementById('detail-content');
