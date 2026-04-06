@@ -3,6 +3,7 @@
     color: white;
     background-color:#163961 !important;
 }
+
 /*Targets the Nav Tab colors */
 .nav {
     --bs-nav-link-color: #163961 !important;
