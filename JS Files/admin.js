@@ -239,7 +239,20 @@ const SectionManager = {
         const body = this.elements.body.value;
         const location = this.elements.location.value;
         const file = this.elements.image.files[0];
-        const hasButton = document.getElementById('has-subpage-button').value === "true";
+
+        // Grab the specific IDs with "Null Checks" (This stops the crash!)
+        const buttonEl = document.getElementById('has-subpage-button');
+        const hasButton = buttonEl ? (buttonEl.value === "true") : false;
+
+        const alignEl = document.getElementById('image-alignment');
+        const imageAlignment = alignEl ? alignEl.value : "left"; // Defaults to left if HTML is missing
+
+        const slugEl = document.getElementById('section-slug');
+        const generatedSlug = slugEl ? slugEl.value : title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+
+        // Grab the Video URL safely
+        const videoEl = document.getElementById('section-video');
+        const videoUrl = videoEl ? videoEl.value.trim() : "";
 
         //const slug = document.getElementById('section-slug').value; // We need this for the URL!
 
@@ -249,6 +262,8 @@ const SectionManager = {
         }
 
         try {
+            
+
             this.elements.addBtn.disabled = true;
             this.elements.addBtn.innerText = "Processing...";
 
@@ -265,13 +280,15 @@ const SectionManager = {
             console.log(" Attempting Firestore write to 'page_sections'...");
 
             //GENERATE THE SLUG - This converts "My Project Title" -> "my-project-title"
-            const generatedSlug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+            //const generatedSlug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
 
             const docRef = await addDoc(collection(db, "page_sections"), {
                 target_page: location,
                 title: title,
                 body_text: body,
                 image_url: imageUrl,
+                image_alignment: imageAlignment,
+                video_url: videoUrl,
                 has_subpage: hasButton, // We'll use this key in main.js
                 slug: generatedSlug,
                 createdAt: serverTimestamp()

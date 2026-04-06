@@ -56,40 +56,6 @@
                         <button id="publish-video-live" class="btn btn-success">Publish to Live Site</button>
                     </div>
                 </div>
-                <!-- PAGE CREATOR 
-                <div class="card p-4 mt-4 shadow-sm">
-                    <h3 class="mb-4"><i class="bi bi-file-earmark-plus"></i> Page Creator</h3>
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Select where this page belongs to:</label>
-                        <select id="new-page-folder" class="form-select">
-                            <option value="research-subpages">Research)</option>
-                            <option value="teaching-subpages">Teaching Subpages (/teaching-subpages/)</option>
-                        </select>
-                    </div>
-                
-                    <div class="mb-3">
-                        <label class="form-label">Page Title:</label>
-                        <input type="text" id="new-page-title" class="form-control" placeholder="e.g. My New Subpage">
-                    </div>
-                
-                    <div class="mb-3">
-                        <label class="form-label">Main Body Text:</label>
-                        <textarea id="new-page-body" class="form-control" rows="5"></textarea>
-                    </div>
-                
-                    <div class="mb-3">
-                        <label class="form-label">Link this from (Parent Page):</label>
-                        <select id="parent-page-link" class="form-select">
-                            <option value="research.html">Research Main Page</option>
-                            <option value="teaching.html">Teaching Main Page</option>
-                        </select>
-                    </div>
-                
-                    <div class="d-grid">
-                        <button id="create-page-btn" class="btn btn-warning btn-lg">Generate & Link Page</button>
-                    </div>
-                </div>-->
 
                 <!-- SECTION CREATOR -->
                 <div class="card p-4 mt-4 shadow-sm mb-4">
@@ -139,6 +105,14 @@
                             <label class="form-label fw-bold small text-uppercase">Add an Image (Optional):</label>
                             <input type="file" id="section-image" class="form-control form-control-sm" accept="image/*">
                         </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Image Position</label>
+                            <select id="image-alignment" class="form-select form-select-sm">
+                                <option value="left">Left Side (Default)</option>
+                                <option value="right">Right Side</option>
+                            </select>
+                        </div>
                         
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small text-uppercase">Add a "Learn More" Button?</label>
@@ -147,10 +121,19 @@
                                 <option value="true">Yes, Create a detailed subpage</option>
                             </select>
                         </div>
+
+                    </div>
+
+                    <div class="row mb-2 rounded mx-0">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Add a Video (Optional)</label>
+                            <input type="text" id="section-video" class="form-control form-control-sm" placeholder="Paste YouTube or Echo360 link here...">
+                            <small class="text-muted">For YouTube, just paste the normal link. For Echo360, paste the "Embed" link.</small>
+                        </div>
                     </div>
                 
                     <div class="d-grid mt-4">
-                        <button id="add-section-btn" class="btn btn-warning btn-lg shadow">
+                        <button id="add-section-btn" class="btn btn-success btn-lg shadow">
                             <i class="bi bi-cloud-arrow-up"></i> Add Section to Page
                         </button>
                         <small class="text-center text-muted mt-2">This will appear at the bottom of the selected page.</small>

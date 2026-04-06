@@ -113,6 +113,34 @@ const SectionRenderer = {
         const img = data.image_url || "";
         const sectionId = data.slug || "section";
 
+        // Logic for image ordering
+        const alignment = data.image_alignment || "left"; // Default to left if missing
+        const imgOrderClass = alignment === "right" ? "order-md-2" : "order-md-1";
+        const textOrderClass = alignment === "right" ? "order-md-1" : "order-md-2";
+
+        // Video Formatting Logic
+        let videoHtml = "";
+        if (data.video_url) {
+            let finalVidUrl = data.video_url;
+            
+            // Auto-convert standard YouTube links to Embed links
+            if (finalVidUrl.includes("youtube.com/watch?v=")) {
+                finalVidUrl = finalVidUrl.replace("watch?v=", "embed/");
+                // Strip out any extra playlist parameters that might break the embed
+                finalVidUrl = finalVidUrl.split("&")[0]; 
+            } else if (finalVidUrl.includes("youtu.be/")) {
+                finalVidUrl = finalVidUrl.replace("youtu.be/", "youtube.com/embed/");
+                finalVidUrl = finalVidUrl.split("?")[0];
+            }
+
+            // Creates the responsive, centered video iframe
+            videoHtml = `
+                <div class="ratio ratio-16x9 my-4 mx-auto shadow-sm rounded overflow-hidden" style="max-width: 100%;">
+                    <iframe src="${finalVidUrl}" title="Video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            `;
+        }
+
         // Identify the base name (e.g., 'research' or 'teaching')
         let pageBase = data.target_page.replace('.html', ''); 
         // Explicitly handle the 'teachings' vs 'teaching' mismatch
@@ -137,30 +165,33 @@ const SectionRenderer = {
             buttonLink = `./${pageBase}-subpages/details.html?id=${data.slug}`;
         }
         return `
-            <section id="${sectionId}" class="py-5 container border-bottom">
-                <div class="container">
-                    <div class="row align-items-center">
-                        ${img ? `
-                            <div class="col-md-5 mb-3 mb-md-0">
-                                <img src="${img}" class="img-fluid rounded shadow-sm" alt="${title}">
+        <section id="${sectionId}" class="py-5 container border-bottom">
+            <div class="container">
+                <div class="row align-items-center">
+                    ${img ? `
+                        <div class="col-md-5 mb-3 mb-md-0 ${imgOrderClass}">
+                            <img src="${img}" class="img-fluid rounded shadow-sm w-100" alt="${title}">
+                        </div>
+                    ` : ''}
+                    
+                    <div class="${img ? 'col-md-7' : 'col-12'} ${textOrderClass}">
+                        <h2 class="fw-light mb-3">${title}</h2>
+                        <p class="lead text-muted">${body}</p>
+
+                        ${videoHtml}
+
+                        ${data.has_subpage ? `
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
+                                <a href="${buttonLink}" class="btn btn-outline-secondary btn-lg px-4">
+                                    Learn More <i class="fa-solid fa-arrow-right ms-2"></i>
+                                </a>
                             </div>
                         ` : ''}
-                        <div class="${img ? 'col-md-7' : 'col-12'}">
-                            <h2 class="fw-light mb-3">${title}</h2>
-                            <p class="lead text-muted">${body}</p>
-
-                            ${data.has_subpage ? `
-                                <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
-                                    <a href="${buttonLink}" class="btn btn-outline-secondary btn-lg px-4">
-                                        Learn More
-                                    </a>
-                                </div>
-                            ` : ''}
-                        </div>
                     </div>
                 </div>
-            </section>
-        `;
+            </div>
+        </section>
+    `;
     }
 };
 
@@ -275,14 +306,8 @@ const DetailRenderer = {
 
             if (!querySnapshot.empty) {
                 const data = querySnapshot.docs[0].data();
+                // We only set the title. We skip the image and body text entirely!
                 document.getElementById('detail-header-title').innerText = data.title;
-                document.getElementById('detail-body').innerText = data.body_text;
-                
-                const imgElement = document.getElementById('detail-image');
-                if (data.image_url) {
-                    imgElement.src = data.image_url;
-                    imgElement.classList.remove('d-none');
-                }
             }
 
             // 2. Add the "Parking Spot" for the new sections
