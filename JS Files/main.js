@@ -40,19 +40,19 @@ async function loadAllVideos() {
             
             if (videoElement) {
                 const data = doc.data();
-
-                // DECISION POINT: Use draft_url if in preview mode, otherwise use live_url
                 const urlToShow = isPreviewMode ? (data.draft_url || data.live_url) : data.live_url;
 
                 if (urlToShow) {
-                    // Extract ID using regex
-                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                    const match = urlToShow.match(regExp);
-                    const videoId = (match && match[2].length === 11) ? match[2] : null;
-
-                    if (videoId) {
-                        videoElement.src = `https://www.youtube.com/embed/${videoId}`;
+                    let finalUrl = urlToShow;
+                    
+                    // 🚀 NEW: Smart Passthrough applies to live site too!
+                    if (finalUrl.includes("youtube.com/watch?v=")) {
+                        finalUrl = finalUrl.replace("watch?v=", "embed/").split("&")[0];
+                    } else if (finalUrl.includes("youtu.be/")) {
+                        finalUrl = finalUrl.replace("youtu.be/", "youtube.com/embed/").split("?")[0];
                     }
+
+                    videoElement.src = finalUrl;
                 }
             }
         });
@@ -183,7 +183,7 @@ const SectionRenderer = {
                         ${data.has_subpage ? `
                             <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
                                 <a href="${buttonLink}" class="btn btn-outline-secondary btn-lg px-4">
-                                    Learn More <i class="fa-solid fa-arrow-right ms-2"></i>
+                                    Learn More
                                 </a>
                             </div>
                         ` : ''}

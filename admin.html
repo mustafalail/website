@@ -45,12 +45,31 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Select Video to Edit:</label>
                         <select id="video-selector" class="form-select">
-                            <option value="home_main">Homepage - Graduation Video</option>
+                            <optgroup label="--- MAIN PAGES ---">
+                                <option value="video_content|home_grad_video">Homepage - Graduation Video</option>
+                            </optgroup>
+                            <optgroup label="--- NESTED SUBPAGES ---">
+                                <option value="video_content|sample-teaching-vid-1"> (Teaching: Curr. & Dev.) - Sample Teaching Materials (Video 1) </option>
+                                <option value="video_content|sample-teaching-vid-2"> (Teaching: Curriculum & Development) - Sample Teaching Materials (Video 2) </option>
+                                <option value="video_content|press-releases-research-video"> (Teaching: Undergrad Research) - Student Poster </option>
+                                <option value="video_content|promoting-teach-w-tech-vid-1"> (Teaching: Undergrad Research) - Promoting Teaching w/Tech (Echo360 - 1) </option>
+                                <option value="video_content|promoting-teach-w-tech-vid-2"> (Teaching: Undergrad Research) - Promoting Teaching w/Tech (Echo360 - 2) </option>
+                            </optgroup>
+                            <optgroup label="--- SECTION VIDEOS ---" id="dynamic-video-options"></optgroup>
                         </select>
                     </div>
                     <div class="input-group mb-3">
                         <input type="text" id="video-input" class="form-control" placeholder="YouTube URL">
                         <button id="save-video-draft" class="btn btn-secondary">Update Preview</button>
+                        <div class="ratio ratio-16x9 mt-3 shadow-sm rounded overflow-hidden">
+                            <iframe 
+                                id="video-preview-iframe" 
+                                src="" 
+                                title="Video Preview"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                            </iframe>
+                        </div>
                     </div>
                     <div class="d-grid">
                         <button id="publish-video-live" class="btn btn-success">Publish to Live Site</button>

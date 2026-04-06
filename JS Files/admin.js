@@ -1,6 +1,6 @@
 import { db, auth, storage } from './firebase-config.js';
 // Updated Firestore Imports (Added collection, addDoc, serverTimestamp)
-import { doc, updateDoc, getDoc, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, deleteDoc} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { doc, updateDoc, getDoc, collection, addDoc, serverTimestamp, query, where, setDoc, orderBy, onSnapshot, deleteDoc} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 //  Imports (These are needed for the image upload)
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-storage.js";
@@ -124,7 +124,7 @@ const FooterManager = {
  * Handles multiple video entries, each with its own draft vs. live logic and preview.
  */
 const VideoManager = {
-    activeDocId: 'home_grad_video', // Default selection
+    activeDocId: 'video_content|home_grad_video', 
 
     elements: {
         selector: document.getElementById('video-selector'),
@@ -136,82 +136,118 @@ const VideoManager = {
     async init() {
         if (!this.elements.selector) return;
 
-        // Load default data
+        const dynamicVideoGroup = document.getElementById('dynamic-video-options');
+        if (dynamicVideoGroup) {
+            onSnapshot(collection(db, "page_sections"), (snapshot) => {
+                dynamicVideoGroup.innerHTML = ""; 
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.video_url) {
+                        const option = document.createElement('option');
+                        option.value = `page_sections|${doc.id}`; 
+                        option.textContent = `↳ Section: ${data.title}`;
+                        dynamicVideoGroup.appendChild(option);
+                    }
+                });
+            });
+        }
+
         await this.loadVideoData();
 
-        // Listen for when the professor picks a different video to edit
         this.elements.selector.addEventListener('change', (e) => {
             this.activeDocId = e.target.value;
             this.loadVideoData();
         });
+
+        document.getElementById('save-video-draft')?.addEventListener('click', () => this.saveDraft());
+        document.getElementById('publish-video-live')?.addEventListener('click', () => this.publishLive());
     },
 
     async loadVideoData() {
-        const videoRef = doc(db, "video_content", this.activeDocId);
+        const [collectionName, docId] = this.activeDocId.split('|');
+        const videoRef = doc(db, collectionName, docId);
         const docSnap = await getDoc(videoRef);
         
         if (docSnap.exists()) {
             const data = docSnap.data();
-            const currentDraft = data.draft_url || data.live_url;
-            this.elements.input.value = currentDraft || "";
-            this.updatePreview(currentDraft);
-            this.updateStatusUI(data.draft_url === data.live_url);
+            let currentVideo = "";
+            
+            if (collectionName === "video_content") {
+                currentVideo = data.draft_url || data.live_url || "";
+                this.updateStatusUI(data.draft_url === data.live_url);
+            } else {
+                currentVideo = data.video_url || "";
+                this.updateStatusUI(true); 
+            }
+            
+            this.elements.input.value = currentVideo;
+            this.updatePreview(currentVideo);
+        } else {
+            //  If the document doesn't exist yet, clear the boxes so it doesn't look stuck!
+            this.elements.input.value = "";
+            this.updatePreview("");
+            this.updateStatusUI(false);
         }
     },
 
     updatePreview(url) {
-        // GUARD: If the iframe doesn't exist on this page, just stop here.
-        if (!this.elements.iframe) {
-            console.warn("⚠️ Video preview iframe not found in HTML. Skipping preview update.");
-            return;
-        }
+        if (!this.elements.iframe) return;
         if (!url) {
             this.elements.iframe.src = "";
             return;
         }
-        // Regex to pull the ID from various YouTube URL formats
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        const videoId = (match && match[2].length === 11) ? match[2] : null;
-        
-        this.elements.iframe.src = videoId ? `https://www.youtube.com/embed/${videoId}` : "";
+
+        let finalUrl = url;
+        // Smart Passthrough (Allows Echo360 and formats YouTube)
+        if (finalUrl.includes("youtube.com/watch?v=")) {
+            finalUrl = finalUrl.replace("watch?v=", "embed/").split("&")[0];
+        } else if (finalUrl.includes("youtu.be/")) {
+            finalUrl = finalUrl.replace("youtu.be/", "youtube.com/embed/").split("?")[0];
+        }
+
+        this.elements.iframe.src = finalUrl;
     },
 
     async saveDraft() {
-        const videoRef = doc(db, "video_content", this.activeDocId);
+        const [collectionName, docId] = this.activeDocId.split('|');
         const newVal = this.elements.input.value;
-        try {
-            await updateDoc(videoRef, { draft_url: newVal });
-            this.updatePreview(newVal);
+
+        if (collectionName === "video_content") {
+            const videoRef = doc(db, collectionName, docId);
+            // setDoc with merge prevents the crash/freeze!
+            await setDoc(videoRef, { draft_url: newVal }, { merge: true });
             this.updateStatusUI(false);
-            
-            // Call our helper function
-            refreshSitePreview();
-            
-            alert(`Draft saved for ${this.activeDocId}!`);
-        } catch (e) { console.error("Video Save Draft Error:", e); }
+            alert(`Draft saved!`);
+        } else {
+            this.updateStatusUI(false); 
+        }
+        
+        this.updatePreview(newVal);
     },
 
     async publishLive() {
-        const videoRef = doc(db, "video_content", this.activeDocId);
-        const docSnap = await getDoc(videoRef);
-        if (docSnap.exists()) {
-            const draftVal = docSnap.data().draft_url;
-            await updateDoc(videoRef, { live_url: draftVal });
-            this.updateStatusUI(true);
+        const [collectionName, docId] = this.activeDocId.split('|');
+        const videoRef = doc(db, collectionName, docId);
 
-            refreshSitePreview();
-
-            alert("This video is now LIVE on the website.");
+        if (collectionName === "video_content") {
+            const docSnap = await getDoc(videoRef);
+            const draftVal = (docSnap.exists() && docSnap.data().draft_url) 
+                             ? docSnap.data().draft_url 
+                             : this.elements.input.value;
+            //Doc prevents crash
+            await setDoc(videoRef, { live_url: draftVal }, { merge: true });
+        } else {
+            const newVal = this.elements.input.value;
+            // setDoc prevents crash
+            await setDoc(videoRef, { video_url: newVal }, { merge: true });
         }
+
+        this.updateStatusUI(true);
+        alert("This video is now LIVE on the website.");
     },
 
     updateStatusUI(isSynced) {
-        // GUARD: If the status element doesn't exist, don't try to change it
-        if (!this.elements.status) {
-            console.warn("⚠️ video-sync-status element not found. Skipping UI update.");
-            return; 
-        }
+        if (!this.elements.status) return;
         if (isSynced) {
             this.elements.status.innerText = "Status: Synced with live site";
             this.elements.status.className = "form-text text-success mt-2";
