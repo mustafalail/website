@@ -292,8 +292,10 @@ const SectionManager = {
         // Grab the Video URL safely
         const videoEl = document.getElementById('section-video');
         const videoUrl = videoEl ? videoEl.value.trim() : "";
-
-        //const slug = document.getElementById('section-slug').value; // We need this for the URL!
+        
+        // Grab the PDF file safely
+        const pdfInput = document.getElementById('section-pdf');
+        const pdfFile = pdfInput && pdfInput.files.length > 0 ? pdfInput.files[0] : null;
 
         if (!title || !body) {
             alert("Please fill in the Heading and Description.");
@@ -307,6 +309,7 @@ const SectionManager = {
             this.elements.addBtn.innerText = "Processing...";
 
             let imageUrl = null;
+            let pdfUrl = null;
 
             if (file) {
                 console.log("Image found. Uploading to Storage...");
@@ -316,10 +319,22 @@ const SectionManager = {
                 console.log("Image Uploaded! URL:", imageUrl);
             }
 
-            console.log(" Attempting Firestore write to 'page_sections'...");
+            // Upload PDF with Metadata (If exists)
+            if (pdfFile) {
+                console.log("Uploading PDF...");
+                const pdfStorageRef = ref(storage, `section_pdfs/${Date.now()}_${pdfFile.name}`);
+                
+                // The magic metadata that prevents the download loop!
+                const pdfMetadata = { 
+                    contentType: 'application/pdf',
+                    contentDisposition: 'inline'
+                };
+                
+                const pdfSnapshot = await uploadBytes(pdfStorageRef, pdfFile, pdfMetadata);
+                pdfUrl = await getDownloadURL(pdfSnapshot.ref);
+            }
 
-            //GENERATE THE SLUG - This converts "My Project Title" -> "my-project-title"
-            //const generatedSlug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+            console.log(" Attempting Firestore write to 'page_sections'...");
 
             const docRef = await addDoc(collection(db, "page_sections"), {
                 target_page: location,
@@ -328,6 +343,7 @@ const SectionManager = {
                 image_url: imageUrl,
                 image_alignment: imageAlignment,
                 video_url: videoUrl,
+                pdf_url: pdfUrl, // Saves the PDF link
                 has_subpage: hasButton, // We'll use this key in main.js
                 slug: generatedSlug,
                 createdAt: serverTimestamp()
@@ -430,6 +446,137 @@ window.deleteSection = async (id) => {
         }
     }
 };
+
+const CVManager = {
+    elements: {
+        input: document.getElementById('cv-upload-input'),
+        previewBtn: document.getElementById('preview-cv-btn'),
+        publishBtn: document.getElementById('publish-cv-btn'),
+        status: document.getElementById('cv-upload-status'),
+        iframe: document.getElementById('cv-preview-iframe')
+    },
+    
+    // We store the local preview URL here so we can clean it up later
+    localFileUrl: null, 
+
+    async init() {
+        if (!this.elements.input) return;
+
+        // 1. Load the current live CV on startup
+        await this.loadCurrentCV();
+
+        // 2. Setup button listeners
+        this.elements.previewBtn?.addEventListener('click', () => this.previewLocalFile());
+        this.elements.publishBtn?.addEventListener('click', () => this.publishLive());
+    },
+
+    async loadCurrentCV() {
+        try {
+            const docRef = doc(db, "global_config", "cv_data");
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists() && docSnap.data().pdf_url) {
+                this.elements.iframe.src = docSnap.data().pdf_url;
+                this.updateStatusUI(true);
+            } else {
+                this.elements.status.innerText = "No CV currently uploaded.";
+            }
+        } catch (e) {
+            console.error("Error loading CV:", e);
+        }
+    },
+
+    previewLocalFile() {
+        const file = this.elements.input.files[0];
+        
+        if (!file) {
+            alert("Please select a PDF file first.");
+            return;
+        }
+
+        if (file.type !== "application/pdf") {
+            alert("Only PDF files are allowed!");
+            return;
+        }
+
+        // Cleanup old local URL to prevent memory leaks in the browser
+        if (this.localFileUrl) {
+            URL.revokeObjectURL(this.localFileUrl);
+        }
+
+        // Generate a local temporary URL for the iframe to read
+        this.localFileUrl = URL.createObjectURL(file);
+        this.elements.iframe.src = this.localFileUrl;
+        
+        this.updateStatusUI(false);
+    },
+
+    async publishLive() {
+        const file = this.elements.input.files[0];
+        
+        if (!file) {
+            alert("There is no new file selected to publish!");
+            return;
+        }
+
+        try {
+            // Lock the UI to prevent double-clicks
+            this.elements.publishBtn.disabled = true;
+            this.elements.publishBtn.innerText = "Uploading & Publishing...";
+            this.elements.status.innerText = "Uploading to secure storage, please wait...";
+
+            // 1. Upload the file to Firebase Storage
+            const storageRef = ref(storage, `cv_documents/Live_CV_${Date.now()}.pdf`);
+            
+            // --- NEW METADATA CODE ADDED HERE ---
+            const metadata = {
+                contentType: 'application/pdf',
+                contentDisposition: 'inline'
+            };
+            
+            // --- UPDATED THIS LINE to include the metadata variable ---
+            const snapshot = await uploadBytes(storageRef, file, metadata);
+            
+            const downloadUrl = await getDownloadURL(snapshot.ref);
+
+            // 2. Save the permanent URL to Firestore
+            const docRef = doc(db, "global_config", "cv_data");
+            await setDoc(docRef, { 
+                pdf_url: downloadUrl,
+                updatedAt: serverTimestamp() 
+            }, { merge: true });
+
+            // 3. Reset the UI back to a Live state
+            this.updateStatusUI(true);
+            this.elements.input.value = ""; // Clear the input box
+            this.localFileUrl = null;
+
+            alert("Your new CV is now LIVE on the website!");
+
+        } catch (error) {
+            console.error("CV Upload Error:", error);
+            this.elements.status.innerHTML = `<span class="text-danger">Upload failed: ${error.message}</span>`;
+        } finally {
+            // Unlock the UI
+            this.elements.publishBtn.disabled = false;
+            this.elements.publishBtn.innerText = "Publish to Live Site";
+        }
+    },
+
+    updateStatusUI(isLive) {
+        if (!this.elements.status) return;
+        
+        if (isLive) {
+            this.elements.status.innerHTML = `<span class="text-success fw-bold">Status: Viewing Live CV</span>`;
+        } else {
+            this.elements.status.innerHTML = `<span class="text-warning fw-bold">Status: Previewing Local Draft (Not Live)</span>`;
+        }
+    }
+};
+document.addEventListener('DOMContentLoaded', () => {
+    // If you have other initializations here (like VideoManager.init()), leave them!
+    CVManager.init();
+});
 
 /**
  * -- Event Listeners -- 

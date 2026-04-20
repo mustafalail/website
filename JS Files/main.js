@@ -150,6 +150,24 @@ const SectionRenderer = {
             `;
         }
 
+        // PDF Formatting Logic
+        let pdfHtml = "";
+        if (data.pdf_url) {
+            pdfHtml = `
+                <div class="mt-4 mb-3 w-100">
+                    <object data="${data.pdf_url}" type="application/pdf" width="100%" height="600px" class="border rounded shadow-sm">
+                        <p class="text-muted p-3">Your browser does not support viewing PDFs directly. <br>
+                        <a href="${data.pdf_url}" target="_blank" class="fw-bold">Download the document here.</a></p>
+                    </object>
+                    <div class="mt-3 text-center">
+                        <a href="${data.pdf_url}" target="_blank" class="btn btn-secondary px-5 shadow-sm">
+                            <i class="bi bi-box-arrow-up-right"></i> Open PDF in Full Screen
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
         // Identify the base name (e.g., 'research' or 'teaching')
         let pageBase = data.target_page.replace('.html', ''); 
         // Explicitly handle the 'teachings' vs 'teaching' mismatch
@@ -188,6 +206,8 @@ const SectionRenderer = {
                         <p class="lead text-muted">${body}</p>
 
                         ${videoHtml}
+
+                        ${pdfHtml}
 
                         ${data.has_subpage ? `
                             <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
@@ -290,6 +310,7 @@ const init = () => {
 
     loadAllVideos();
     syncFooterYear();
+    loadLiveCV();
 
     // LOGGING: Only check for the container if we AREN'T on a details page
     if (page !== "details.html") {
@@ -343,6 +364,36 @@ const DetailRenderer = {
         }
     }
 };
+
+// --- LOAD CV PDF ---
+async function loadLiveCV() {
+    const cvObject = document.getElementById('live-cv-object');
+    const cvDownload = document.getElementById('live-cv-download');
+    
+    // Guard: Only run if we are actually on the CV page
+    if (!cvObject) return;
+
+    try {
+        const docRef = doc(db, "global_config", "cv_data");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists() && docSnap.data().pdf_url) {
+            const pdfUrl = docSnap.data().pdf_url;
+            
+            // Inject the Firebase URL into the <object> and the <a> tag
+            cvObject.data = pdfUrl;
+            if (cvDownload) cvDownload.href = pdfUrl;
+        } else {
+            console.log("No live CV found in the database.");
+        }
+    } catch (error) {
+        console.error("Failed to load CV:", error);
+    }
+}
+
+// Add this inside your existing init() function in main.js:
+// loadLiveCV();
+
 
 // Listen for the page to be ready
 window.addEventListener('DOMContentLoaded', init);
