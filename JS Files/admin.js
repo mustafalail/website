@@ -122,7 +122,12 @@ const FooterManager = {
     }
 };
 
+/**
+ * -- Profile Management --
+ * this section handles the profile header
+ */
 const ProfileManager = {
+    // Stores references to all the relevant DOM elements in one place for easy access and to prevent multiple lookups.
     elements: {
         name: document.getElementById('profile-name'),
         title: document.getElementById('profile-title'), 
@@ -132,15 +137,19 @@ const ProfileManager = {
         publishBtn: document.getElementById('publish-profile-btn')
     },
 
+    // Store the current image URLs so that if the admin doesn't upload a new one, we can keep the old one when publishing.
     currentPicUrl: null,
     currentBgUrl: null,
 
+    // The init function loads the current profile data and sets up the event listener for the publish button. 
+    //It also checks if the publish button exists on the page before trying to add a listener, which prevents errors on pages that don't have this feature.
     async init() {
         if (!this.elements.publishBtn) return;
         await this.loadCurrentProfile();
         this.elements.publishBtn.addEventListener('click', () => this.publishLive());
     },
-
+    // This function loads the current profile data from Firestore and populates the input fields. 
+    //It also stores the current image URLs in case the admin doesn't upload new ones.
     async loadCurrentProfile() {
         try {
             const docRef = doc(db, "global_config", "profile_data");
@@ -159,15 +168,20 @@ const ProfileManager = {
             console.error("Error loading profile:", e);
         }
     },
-
+    //this function handles the publishing of the profile changes. 
+    //It checks if new images were uploaded, and if so, it uploads them to Firebase Storage and gets their URLs.
     async publishLive() {
         try {
+            // Lock the publish button to prevent multiple clicks
             this.elements.publishBtn.disabled = true;
             this.elements.publishBtn.innerText = "Saving Profile...";
 
+            // We start with the existing URLs, and only change them if new files are uploaded. 
+            //This way, if the admin only updates the text, the images remain intact.
             let finalPicUrl = this.currentPicUrl;
             let finalBgUrl = this.currentBgUrl;
 
+            // Check if new profile picture was uploaded
             const picFile = this.elements.picUpload.files[0];
             if (picFile) {
                 const picRef = ref(storage, `profile_assets/profile_pic_${Date.now()}_${picFile.name}`);
@@ -181,11 +195,10 @@ const ProfileManager = {
                 const bgSnap = await uploadBytes(bgRef, bgFile);
                 finalBgUrl = await getDownloadURL(bgSnap.ref);
             }
-
+            // Now we have the final URLs (either old or new), and we can save everything to Firestore in one go.
             const docRef = doc(db, "global_config", "profile_data");
             await setDoc(docRef, {
                 name: this.elements.name.value,
-                // REMOVED university field from the database save
                 title: this.elements.title.value,
                 contact_info: this.elements.contact.value,
                 profile_pic_url: finalPicUrl,

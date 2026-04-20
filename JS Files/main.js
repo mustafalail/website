@@ -397,10 +397,11 @@ async function loadLiveCV() {
 }
 
 // --- LOAD PROFILE DATA ---
+//this function is responsible for loading all the flexible profile data (name, title, contact info, profile pic, background) from firebase and injecting it into the live site.
 async function loadProfileData() {
     const profileNameEl = document.getElementById('live-profile-name');
     if (!profileNameEl) return;
-
+    
     try {
         const docRef = doc(db, "global_config", "profile_data");
         const docSnap = await getDoc(docRef);
