@@ -121,6 +121,8 @@ const SectionRenderer = {
         const body = data.body_text || "";
         const img = data.image_url || "";
         const sectionId = data.slug || "section";
+        // Extract the custom text (with a fallback for older sections)
+        const btnText = data.button_text || "Learn More";
 
         // Logic for image ordering
         const alignment = data.image_alignment || "left"; // Default to left if missing
@@ -212,7 +214,7 @@ const SectionRenderer = {
                         ${data.has_subpage ? `
                             <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
                                 <a href="${buttonLink}" class="btn btn-outline-secondary btn-lg px-4">
-                                    Learn More
+                                    ${btnText}
                                 </a>
                             </div>
                         ` : ''}
@@ -311,6 +313,7 @@ const init = () => {
     loadAllVideos();
     syncFooterYear();
     loadLiveCV();
+    loadProfileData();
 
     // LOGGING: Only check for the container if we AREN'T on a details page
     if (page !== "details.html") {
@@ -341,8 +344,10 @@ const DetailRenderer = {
 
             if (!querySnapshot.empty) {
                 const data = querySnapshot.docs[0].data();
-                // We only set the title. We skip the image and body text entirely!
-                document.getElementById('detail-header-title').innerText = data.title;
+                // Use the custom subpage title, or fallback to the main section title for older posts
+                const headerTitle = data.subpage_title || data.title;
+                // Update the text on the screen
+                document.getElementById('detail-header-title').innerText = headerTitle;
             }
 
             // 2. Add the "Parking Spot" for the new sections
@@ -391,8 +396,47 @@ async function loadLiveCV() {
     }
 }
 
-// Add this inside your existing init() function in main.js:
-// loadLiveCV();
+// --- LOAD PROFILE DATA ---
+async function loadProfileData() {
+    const profileNameEl = document.getElementById('live-profile-name');
+    if (!profileNameEl) return;
+
+    try {
+        const docRef = doc(db, "global_config", "profile_data");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+
+            // Inject Name
+            profileNameEl.innerText = data.name || "";
+            
+            // Format flexible Title info (Converts line breaks to <br>)
+            const titleEl = document.getElementById('live-profile-title');
+            if (titleEl && data.title) {
+                titleEl.innerHTML = data.title.replace(/\n/g, '<br>');
+            } else if (titleEl) {
+                titleEl.innerHTML = "";
+            }
+            
+            // Format flexible contact info (Converts line breaks to <br>)
+            if (data.contact_info) {
+                const formattedContact = data.contact_info.replace(/\n/g, '<br>');
+                document.getElementById('live-profile-contact').innerHTML = `<p>${formattedContact}</p>`;
+            }
+
+            // Inject Images
+            if (data.profile_pic_url) {
+                document.getElementById('live-profile-pic').src = data.profile_pic_url;
+            }
+            if (data.background_url) {
+                document.getElementById('profile-background-section').style.backgroundImage = `url('${data.background_url}')`;
+            }
+        }
+    } catch (error) {
+        console.error("Failed to load profile data:", error);
+    }
+}
 
 
 // Listen for the page to be ready

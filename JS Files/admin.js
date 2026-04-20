@@ -121,6 +121,94 @@ const FooterManager = {
         }
     }
 };
+
+const ProfileManager = {
+    elements: {
+        name: document.getElementById('profile-name'),
+        title: document.getElementById('profile-title'), 
+        contact: document.getElementById('profile-contact'),
+        picUpload: document.getElementById('profile-pic-upload'),
+        bgUpload: document.getElementById('profile-bg-upload'),
+        publishBtn: document.getElementById('publish-profile-btn')
+    },
+
+    currentPicUrl: null,
+    currentBgUrl: null,
+
+    async init() {
+        if (!this.elements.publishBtn) return;
+        await this.loadCurrentProfile();
+        this.elements.publishBtn.addEventListener('click', () => this.publishLive());
+    },
+
+    async loadCurrentProfile() {
+        try {
+            const docRef = doc(db, "global_config", "profile_data");
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (this.elements.name) this.elements.name.value = data.name || "";
+                if (this.elements.title) this.elements.title.value = data.title || "";
+                if (this.elements.contact) this.elements.contact.value = data.contact_info || "";
+                
+                this.currentPicUrl = data.profile_pic_url || null;
+                this.currentBgUrl = data.background_url || null;
+            }
+        } catch (e) {
+            console.error("Error loading profile:", e);
+        }
+    },
+
+    async publishLive() {
+        try {
+            this.elements.publishBtn.disabled = true;
+            this.elements.publishBtn.innerText = "Saving Profile...";
+
+            let finalPicUrl = this.currentPicUrl;
+            let finalBgUrl = this.currentBgUrl;
+
+            const picFile = this.elements.picUpload.files[0];
+            if (picFile) {
+                const picRef = ref(storage, `profile_assets/profile_pic_${Date.now()}_${picFile.name}`);
+                const picSnap = await uploadBytes(picRef, picFile);
+                finalPicUrl = await getDownloadURL(picSnap.ref);
+            }
+
+            const bgFile = this.elements.bgUpload.files[0];
+            if (bgFile) {
+                const bgRef = ref(storage, `profile_assets/background_${Date.now()}_${bgFile.name}`);
+                const bgSnap = await uploadBytes(bgRef, bgFile);
+                finalBgUrl = await getDownloadURL(bgSnap.ref);
+            }
+
+            const docRef = doc(db, "global_config", "profile_data");
+            await setDoc(docRef, {
+                name: this.elements.name.value,
+                // REMOVED university field from the database save
+                title: this.elements.title.value,
+                contact_info: this.elements.contact.value,
+                profile_pic_url: finalPicUrl,
+                background_url: finalBgUrl,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+
+            alert("Profile updated successfully!");
+            
+            this.elements.picUpload.value = "";
+            this.elements.bgUpload.value = "";
+            await this.loadCurrentProfile();
+
+        } catch (error) {
+            console.error("Profile Save Error:", error);
+            alert("Error saving profile: " + error.message);
+        } finally {
+            this.elements.publishBtn.disabled = false;
+            this.elements.publishBtn.innerText = "Publish Profile Changes";
+        }
+    }
+};
+
 /**
  * -- Video Settings --
  * Handles multiple video entries, each with its own draft vs. live logic and preview.
@@ -283,6 +371,14 @@ const SectionManager = {
         const buttonEl = document.getElementById('has-subpage-button');
         const hasButton = buttonEl ? (buttonEl.value === "true") : false;
 
+        // Grabs the custom text, but use "Learn More" as a safe fallback if it's empty
+        const btnTextEl = document.getElementById('custom-button-text');
+        const customBtnText = btnTextEl && btnTextEl.value.trim() !== "" ? btnTextEl.value.trim() : "Learn More";
+
+        // Grab the custom subpage title, but use the main section 'title' as a safe fallback
+        const subpageTitleEl = document.getElementById('custom-subpage-title');
+        const customSubpageTitle = subpageTitleEl && subpageTitleEl.value.trim() !== "" ? subpageTitleEl.value.trim() : title;
+
         const alignEl = document.getElementById('image-alignment');
         const imageAlignment = alignEl ? alignEl.value : "left"; // Defaults to left if HTML is missing
 
@@ -344,7 +440,9 @@ const SectionManager = {
                 image_alignment: imageAlignment,
                 video_url: videoUrl,
                 pdf_url: pdfUrl, // Saves the PDF link
-                has_subpage: hasButton, // We'll use this key in main.js
+                has_subpage: hasButton,
+                button_text: customBtnText, // We'll use this key in main.js
+                subpage_title: customSubpageTitle,
                 slug: generatedSlug,
                 createdAt: serverTimestamp()
             });
@@ -576,6 +674,7 @@ const CVManager = {
 document.addEventListener('DOMContentLoaded', () => {
     // If you have other initializations here (like VideoManager.init()), leave them!
     CVManager.init();
+    ProfileManager.init();
 });
 
 /**

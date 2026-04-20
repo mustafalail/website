@@ -40,6 +40,46 @@
                     </div>
                 </div>
 
+                <!-- PROFILE HEADER -->
+                <div class="card p-4 shadow-sm mt-4 mb-4">
+                    <h3 class="mb-4">Home Profile Settings</h3>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Full Name:</label>
+                        <input type="text" id="profile-name" class="form-control" placeholder="e.g., Dr. Mustafa Al Lail">
+                    </div>
+                
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Professional Organization & Title :</label>
+                        <textarea id="profile-title" class="form-control" rows="3" placeholder="Texas A&M International University&#10;Associate Professor of Computer Science"></textarea>
+                        <small class="text-muted">Line breaks will be preserved.</small>
+                    </div>
+                
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Contact Information (Flexible Text):</label>
+                        <textarea id="profile-contact" class="form-control" rows="4" placeholder="Office: LBV 324E&#10;Phone: 956.326.2410&#10;Email: jane.doe@tamiu.edu"></textarea>
+                        <small class="text-muted">Line breaks will be preserved on the live site.</small>
+                    </div>
+                
+                
+                    <hr>
+                
+                    <div class="mb-3">
+                            <label class="form-label fw-bold">Update Profile Picture:</label>
+                            <input type="file" id="profile-pic-upload" class="form-control" accept="image/*">
+                            <small class="text-muted">Leave blank to keep the current image.</small>
+                    </div>
+                    <div class="mb-3">
+                            <label class="form-label fw-bold">Update Background Image:</label>
+                            <input type="file" id="profile-bg-upload" class="form-control" accept="image/*">
+                            <small class="text-muted">Leave blank to keep the current background.</small>
+                    </div>
+                
+                    <div class="d-grid mt-4">
+                        <button id="publish-profile-btn" class="btn btn-success btn-lg">Publish Profile Changes</button>
+                    </div>
+                </div>
+
                 <!-- VIDEO SETTINGS -->
                 <div class="card p-4 shadow-sm">
                     <h3 class="mb-4">Video Settings</h3>
@@ -158,14 +198,25 @@
 
                     <hr>
                     <!-- Section Button (Subpage)-->
-                    <div class="mb-2 rounded mx-0 mt-2">
-                        <label class="form-label fw-bold small text-uppercase">Add a "Learn More" Button? (optional)</label>
+                    <div class="mb-3 rounded mx-0 mt-3">
+                        <label class="form-label fw-bold small text-uppercase">Add a Button? (optional)</label>
                         <select id="has-subpage-button" class="form-select form-select-sm">
                             <option value="false">No Button (Text only)</option>
                             <option value="true">Yes, Create a detailed subpage</option>
                         </select>
                     </div>
-
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Custom Button Text:</label>
+                        <input type="text" id="custom-button-text" class="form-control form-control-sm" placeholder="e.g., Read More, View Project...">
+                        <small class="text-muted">Defaults to "Learn More" if left blank.</small>
+                    </div>
+                    <div class="mb-2 rounded mx-0 mt-2">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold small text-uppercase">Subpage Header Title:</label>
+                            <input type="text" id="custom-subpage-title" class="form-control form-control-sm" placeholder="e.g., Deep Dive: My New Page...">
+                            <small class="text-muted">This will be the large title at the top of the new page. Defaults to your Section Heading if left blank.</small>
+                        </div>
+                    </div>
                     <hr>
                     <!-- Section Video-->
                     <div class="mb-2 rounded mx-0 mt-3">
