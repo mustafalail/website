@@ -119,15 +119,63 @@ const SectionRenderer = {
         // Safety check for missing fields
         const title = data.title || "Untitled Section";
         const body = data.body_text || "";
-        const img = data.image_url || "";
         const sectionId = data.slug || "section";
+        const images = data.carousel_images || [];
         // Extract the custom text (with a fallback for older sections)
         const btnText = data.button_text || "Learn More";
 
+        // Logic to decide layout
+        const isCarousel = images.length > 1;
+        const hasSingleImg = images.length === 1;
         // Logic for image ordering
         const alignment = data.image_alignment || "left"; // Default to left if missing
         const imgOrderClass = alignment === "right" ? "order-md-2" : "order-md-1";
         const textOrderClass = alignment === "right" ? "order-md-1" : "order-md-2";
+
+
+        // Build the Single Image HTML
+        let singleImageHtml = "";
+        if (hasSingleImg) {
+            singleImageHtml = `
+                <div class="col-md-5 mb-3 mb-md-0 ${imgOrderClass}">
+                    <img src="${images[0]}" class="img-fluid rounded shadow-sm w-100" alt="${title}">
+                </div>
+            `;
+        }
+
+        // Build the Carousel HTML (Full Width)
+        let carouselHtml = "";
+        if (isCarousel) {
+            let indicators = "";
+            let slides = "";
+            images.forEach((imgUrl, index) => {
+                const isActive = index === 0 ? "active" : "";
+                indicators += `<button type="button" data-bs-target="#carousel-${sectionId}" data-bs-slide-to="${index}" class="${isActive} bg-dark" style="width: 30px; height: 5px;"></button>`;
+                
+                slides += `
+                    <div class="carousel-item ${isActive}">
+                        <img src="${imgUrl}" class="d-block w-100 rounded shadow-sm object-fit-contain" style="max-height: 600px; background-color: #f8f9fa;" alt="Slide ${index}">
+                    </div>
+                `;
+            });
+
+            carouselHtml = `
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div id="carousel-${sectionId}" class="carousel slide" data-bs-ride="carousel">
+                            <div class="carousel-indicators">${indicators}</div>
+                            <div class="carousel-inner rounded">${slides}</div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#carousel-${sectionId}" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon bg-dark rounded-circle p-2" aria-hidden="true" style="width: 45px; height: 45px; background-size: 60%;"></span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#carousel-${sectionId}" data-bs-slide="next" >
+                                <span class="carousel-control-next-icon bg-dark rounded-circle p-2" aria-hidden="true" style="width: 45px; height: 45px; background-size: 60%;"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
         // Video Formatting Logic
         let videoHtml = "";
@@ -197,29 +245,24 @@ const SectionRenderer = {
         <section id="${sectionId}" class="py-5 container border-bottom">
             <div class="container">
                 <div class="row align-items-center">
-                    ${img ? `
-                        <div class="col-md-5 mb-3 mb-md-0 ${imgOrderClass}">
-                            <img src="${img}" class="img-fluid rounded shadow-sm w-100" alt="${title}">
-                        </div>
-                    ` : ''}
                     
-                    <div class="${img ? 'col-md-7' : 'col-12'} ${textOrderClass}">
+                    ${singleImageHtml}
+
+                    <div class="${hasSingleImg ? 'col-md-7' : 'col-12'} ${textOrderClass}">
                         <h2 class="fw-light mb-3">${title}</h2>
                         <p class="lead text-muted">${body}</p>
-
+                        
                         ${videoHtml}
-
-                        ${pdfHtml}
-
+                        
                         ${data.has_subpage ? `
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
-                                <a href="${buttonLink}" class="btn btn-outline-secondary btn-lg px-4">
-                                    ${btnText}
-                                </a>
-                            </div>
+                            <div class="mt-4"><a href="${buttonLink}" class="btn btn-outline-secondary px-4">${btnText}</a></div>
                         ` : ''}
                     </div>
                 </div>
+
+                ${carouselHtml}
+
+                ${pdfHtml}
             </div>
         </section>
     `;

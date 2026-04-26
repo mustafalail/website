@@ -184,16 +184,17 @@
                     <hr>
                     <!-- Section Image-->
                     <div class="mb-2">
-                        <label class="form-label fw-bold small text-uppercase">Add an Image (Optional):</label>
-                        <input type="file" id="section-image" class="form-control form-control-sm" accept="image/*">
+                        <label class="form-label fw-bold small text-uppercase">Add Image(s) (Optional):</label>
+                        <input type="file" id="section-image" class="form-control form-control-sm" accept="image/*" multiple>
                     </div>
-
+                    
                     <div class="mb-2 rounded mx-0 mt-3">
-                            <label class="form-label fw-bold small text-uppercase">Image Position</label>
-                            <select id="image-alignment" class="form-select form-select-sm">
-                                <option value="left">Left Side (Default)</option>
-                                <option value="right">Right Side</option>
-                            </select>
+                        <label class="form-label fw-bold small text-uppercase">Image Position (Single Image Only)</label>
+                        <select id="image-alignment" class="form-select form-select-sm">
+                            <option value="left">Left Side (Default)</option>
+                            <option value="right">Right Side</option>
+                        </select>
+                        <small class="text-muted">Note: Carousels always appear below the text.</small>
                     </div>
 
                     <hr>
@@ -252,6 +253,53 @@
                         </div>
                     </div>
 
+                </div>
+
+                <!-- SECTION EDITOR -->
+                <div class="card p-4 shadow-sm mt-4">
+                    <h3 class="mb-4"><i class="bi bi-pencil-square"></i> Edit Existing Section</h3>
+                    
+                    <div class="row mb-4 border-bottom pb-4">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold text-uppercase small">1. Select Target Page:</label>
+                            <select id="edit-page-selector" class="form-select form-select-lg">
+                                <option value="">-- Loading Pages... --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold text-uppercase small">2. Select Section to Edit:</label>
+                            <select id="edit-section-selector" class="form-select form-select-lg">
+                                <option value="">-- Waiting for page selection --</option>
+                            </select>
+                        </div>
+                    </div>
+                
+                    <input type="hidden" id="edit-section-id">
+                
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Section Heading:</label>
+                        <input type="text" id="edit-section-title" class="form-control">
+                    </div>
+                
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Section Description (Text):</label>
+                        <textarea id="edit-section-body" class="form-control" rows="6"></textarea>
+                    </div>
+                
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Button Text:</label>
+                            <input type="text" id="edit-button-text" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Subpage Title:</label>
+                            <input type="text" id="edit-subpage-title" class="form-control">
+                        </div>
+                    </div>
+                
+                    <div class="d-grid mt-3">
+                        <button type="button" class="btn btn-success px-5 btn-lg" id="save-edit-btn">Save Changes</button>
+                    </div>
                 </div>
 
             </div>

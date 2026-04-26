@@ -1,6 +1,6 @@
 import { db, auth, storage } from './firebase-config.js';
 // Updated Firestore Imports (Added collection, addDoc, serverTimestamp)
-import { doc, updateDoc, getDoc, collection, addDoc, serverTimestamp, query, where, setDoc, orderBy, onSnapshot, deleteDoc} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { doc, updateDoc, getDocs, collection, addDoc, serverTimestamp, query, where, setDoc, orderBy, onSnapshot, deleteDoc} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 //  Imports (These are needed for the image upload)
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-storage.js";
@@ -378,7 +378,10 @@ const SectionManager = {
         const title = this.elements.title.value;
         const body = this.elements.body.value;
         const location = this.elements.location.value;
-        const file = this.elements.image.files[0];
+
+        // Capture ALL files selected
+        const imageInput = this.elements.image; 
+        const files = imageInput && imageInput.files.length > 0 ? Array.from(imageInput.files) : [];
 
         // Grab the specific IDs with "Null Checks" (This stops the crash!)
         const buttonEl = document.getElementById('has-subpage-button');
@@ -413,19 +416,23 @@ const SectionManager = {
 
         try {
             
-
             this.elements.addBtn.disabled = true;
             this.elements.addBtn.innerText = "Processing...";
 
-            let imageUrl = null;
+            let carouselUrls = [];
             let pdfUrl = null;
 
-            if (file) {
-                console.log("Image found. Uploading to Storage...");
-                const storageRef = ref(storage, `section_images/${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
-                imageUrl = await getDownloadURL(snapshot.ref);
-                console.log("Image Uploaded! URL:", imageUrl);
+            // Loop through each file and upload individually
+            if (files.length > 0) {
+                console.log(`Found ${files.length} images. Uploading to Storage...`);
+                
+                for (const file of files) {
+                    const storageRef = ref(storage, `section_images/${Date.now()}_${file.name}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    const downloadUrl = await getDownloadURL(snapshot.ref);
+                    carouselUrls.push(downloadUrl);
+                }
+                console.log("All images uploaded!", carouselUrls);
             }
 
             // Upload PDF with Metadata (If exists)
@@ -449,7 +456,7 @@ const SectionManager = {
                 target_page: location,
                 title: title,
                 body_text: body,
-                image_url: imageUrl,
+                carousel_images: carouselUrls,
                 image_alignment: imageAlignment,
                 video_url: videoUrl,
                 pdf_url: pdfUrl, // Saves the PDF link
@@ -684,10 +691,167 @@ const CVManager = {
         }
     }
 };
+
+
+const SectionEditor = {
+    // Array to hold all database sections in memory so it's super fast
+    allSections: [], 
+
+    elements: {
+        pageSelect: document.getElementById('edit-page-selector'),
+        sectionSelect: document.getElementById('edit-section-selector'),
+        id: document.getElementById('edit-section-id'),
+        title: document.getElementById('edit-section-title'),
+        body: document.getElementById('edit-section-body'),
+        btnText: document.getElementById('edit-button-text'),
+        subpageTitle: document.getElementById('edit-subpage-title'),
+        saveBtn: document.getElementById('save-edit-btn')
+    },
+
+    async init() {
+        await this.fetchAllSections();
+        
+        // Listeners to make the dropdowns trigger data changes
+        if (this.elements.pageSelect) {
+            this.elements.pageSelect.addEventListener('change', (e) => this.populateSectionsDropdown(e.target.value));
+        }
+        if (this.elements.sectionSelect) {
+            this.elements.sectionSelect.addEventListener('change', (e) => this.loadSectionData(e.target.value));
+        }
+        if (this.elements.saveBtn) {
+            this.elements.saveBtn.addEventListener('click', () => this.saveSectionEdits());
+        }
+    },
+
+    async fetchAllSections() {
+        try {
+            const querySnapshot = await getDocs(collection(db, "page_sections"));
+            this.allSections = [];
+            const uniquePages = new Set();
+
+            // Store the data in memory and find all unique pages
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                data.id = docSnap.id; 
+                this.allSections.push(data);
+                
+                if (data.target_page) {
+                    uniquePages.add(data.target_page);
+                }
+            });
+
+            // Populate Dropdown 1 (The Pages)
+            this.elements.pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
+            uniquePages.forEach(page => {
+                const option = document.createElement('option');
+                option.value = page;
+                option.textContent = page; // E.g., 'index.html' or 'details.html'
+                this.elements.pageSelect.appendChild(option);
+            });
+
+        } catch (error) {
+            console.error("Error loading sections:", error);
+            this.elements.pageSelect.innerHTML = '<option value="">Error loading database.</option>';
+        }
+    },
+
+    populateSectionsDropdown(selectedPage) {
+        this.clearForm(); // Clear the text boxes
+        
+        if (!selectedPage) {
+            this.elements.sectionSelect.innerHTML = '<option value="">-- Waiting for page selection --</option>';
+            return;
+        }
+
+        // Filter sections that belong only to the chosen page
+        const filteredSections = this.allSections.filter(sec => sec.target_page === selectedPage);
+
+        if (filteredSections.length === 0) {
+            this.elements.sectionSelect.innerHTML = '<option value="">No sections found on this page</option>';
+            return;
+        }
+
+        // Populate Dropdown 2 (The Sections)
+        this.elements.sectionSelect.innerHTML = '<option value="">-- Select a Section --</option>';
+        filteredSections.forEach(sec => {
+            const option = document.createElement('option');
+            option.value = sec.id;
+            option.textContent = sec.title || "Untitled Section";
+            this.elements.sectionSelect.appendChild(option);
+        });
+    },
+
+    loadSectionData(sectionId) {
+        if (!sectionId) {
+            this.clearForm();
+            return;
+        }
+
+        // Find the chosen section in memory and push text to the form
+        const sectionData = this.allSections.find(sec => sec.id === sectionId);
+        if (sectionData) {
+            this.elements.id.value = sectionId;
+            this.elements.title.value = sectionData.title || "";
+            this.elements.body.value = sectionData.body_text || "";
+            this.elements.btnText.value = sectionData.button_text || "";
+            this.elements.subpageTitle.value = sectionData.subpage_title || "";
+        }
+    },
+
+    clearForm() {
+        this.elements.id.value = "";
+        this.elements.title.value = "";
+        this.elements.body.value = "";
+        this.elements.btnText.value = "";
+        this.elements.subpageTitle.value = "";
+    },
+
+    async saveSectionEdits() {
+        const sectionId = this.elements.id.value;
+        const updatedTitle = this.elements.title.value;
+        const updatedBody = this.elements.body.value;
+
+        // Safety check to ensure they actually picked a section first!
+        if (!sectionId) {
+            alert("Please select a Page and a Section from the dropdown menus before saving!");
+            return;
+        }
+
+        if (!updatedTitle || !updatedBody) {
+            alert("Title and Description cannot be empty.");
+            return;
+        }
+
+        try {
+            this.elements.saveBtn.disabled = true;
+            this.elements.saveBtn.innerText = "Saving to Database...";
+
+            const docRef = doc(db, "page_sections", sectionId);
+            await updateDoc(docRef, {
+                title: updatedTitle,
+                body_text: updatedBody,
+                button_text: this.elements.btnText.value,
+                subpage_title: this.elements.subpageTitle.value,
+                updatedAt: serverTimestamp()
+            });
+
+            alert("Section text updated successfully!");
+            window.location.reload(); 
+
+        } catch (error) {
+            console.error("Error updating section:", error);
+            alert("Error saving updates: " + error.message);
+            this.elements.saveBtn.disabled = false;
+            this.elements.saveBtn.innerText = "Save Changes";
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // If you have other initializations here (like VideoManager.init()), leave them!
     CVManager.init();
     ProfileManager.init();
+    SectionEditor.init();
 });
 
 /**
