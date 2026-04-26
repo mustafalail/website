@@ -117,12 +117,14 @@ const SectionRenderer = {
     createSectionTemplate(data) {
         console.log("Checking section data for button:", data.title, "| has_subpage:", data.has_subpage);
         // Safety check for missing fields
-        const title = data.title || "Untitled Section";
-        const body = data.body_text || "";
+        const title = data.title || "";
+        const rawBody = data.body_text || "";
         const sectionId = data.slug || "section";
         const images = data.carousel_images || [];
         // Extract the custom text (with a fallback for older sections)
         const btnText = data.button_text || "Learn More";
+
+        const formattedBody = rawBody.replace(/\n/g, '<br>');
 
         // Logic to decide layout
         const isCarousel = images.length > 1;
@@ -131,6 +133,9 @@ const SectionRenderer = {
         const alignment = data.image_alignment || "left"; // Default to left if missing
         const imgOrderClass = alignment === "right" ? "order-md-2" : "order-md-1";
         const textOrderClass = alignment === "right" ? "order-md-1" : "order-md-2";
+   
+        const titleAlignClass = data.title_alignment || "text-start";
+        const bodyAlignClass = data.body_alignment || "text-start";
 
 
         // Build the Single Image HTML
@@ -194,7 +199,7 @@ const SectionRenderer = {
 
             // Creates the responsive, centered video iframe
             videoHtml = `
-                <div class="ratio ratio-16x9 my-4 mx-auto shadow-sm rounded overflow-hidden" style="max-width: 100%;">
+                <div class="ratio ratio-16x9 my-4 mx-auto shadow-sm rounded overflow-hidden" style="max-width: 760px">
                     <iframe src="${finalVidUrl}" title="Video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                 </div>
             `;
@@ -244,18 +249,33 @@ const SectionRenderer = {
         return `
         <section id="${sectionId}" class="py-5 container border-bottom">
             <div class="container">
-                <div class="row align-items-center">
+                
+                ${(titleAlignClass === 'text-center' && title) ? `
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h2 class="fw-light ${titleAlignClass}">${title}</h2>
+                    </div>
+                </div>
+            ` : ''}
+
+                <div class="row align-items-center p-4">
                     
                     ${singleImageHtml}
 
                     <div class="${hasSingleImg ? 'col-md-7' : 'col-12'} ${textOrderClass}">
-                        <h2 class="fw-light mb-3">${title}</h2>
-                        <p class="lead text-muted">${body}</p>
+                        
+                        ${titleAlignClass !== 'text-center' ? `
+                            <h2 class="mb-3 text-start">${title}</h2>
+                        ` : ''}
+
+                        <p class="lead text-start ${bodyAlignClass}">${formattedBody}</p>
                         
                         ${videoHtml}
                         
                         ${data.has_subpage ? `
-                            <div class="mt-4"><a href="${buttonLink}" class="btn btn-outline-secondary px-4">${btnText}</a></div>
+                            <div class="mt-4 text-start">
+                                <a href="${buttonLink}" class="btn btn-outline-secondary px-4">${btnText}</a>
+                            </div>
                         ` : ''}
                     </div>
                 </div>

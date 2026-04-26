@@ -398,8 +398,14 @@ const SectionManager = {
         const alignEl = document.getElementById('image-alignment');
         const imageAlignment = alignEl ? alignEl.value : "left"; // Defaults to left if HTML is missing
 
+        const titleAlignEl = document.getElementById('title-alignment');
+        const titleAlignment = titleAlignEl ? titleAlignEl.value : "text-start"; 
+
+        const bodyAlignEl = document.getElementById('body-alignment');
+        const bodyAlignment = bodyAlignEl ? bodyAlignEl.value : "text-start";
+
         const slugEl = document.getElementById('section-slug');
-        const generatedSlug = slugEl ? slugEl.value : title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+        let generatedSlug = slugEl ? slugEl.value.trim() : "";
 
         // Grab the Video URL safely
         const videoEl = document.getElementById('section-video');
@@ -409,8 +415,16 @@ const SectionManager = {
         const pdfInput = document.getElementById('section-pdf');
         const pdfFile = pdfInput && pdfInput.files.length > 0 ? pdfInput.files[0] : null;
 
-        if (!title || !body) {
-            alert("Please fill in the Heading and Description.");
+        if (!generatedSlug) {
+            if (title) {
+                generatedSlug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
+            } else {
+                generatedSlug = "text-block-" + Math.floor(Math.random() * 100000);
+            }
+        }
+
+        if (!title && !body) {
+            alert("Please fill in at least a Heading or a Description.");
             return;
         }
 
@@ -456,6 +470,8 @@ const SectionManager = {
                 target_page: location,
                 title: title,
                 body_text: body,
+                title_alignment: titleAlignment,
+                body_alignment: bodyAlignment,
                 carousel_images: carouselUrls,
                 image_alignment: imageAlignment,
                 video_url: videoUrl,
@@ -480,68 +496,82 @@ const SectionManager = {
         }
     },
 
-   // 1. Load and show the added sections
-   async init() {
-        const list = document.getElementById('manage-sections-list');
+    // 1. Load and show the added sections (Grouped by Page)
+    async init() {
+        const accordionContainer = document.getElementById('manage-sections-accordion');
+        // Fallback check for your previous ID if you haven't renamed it in HTML yet
+        const list = accordionContainer || document.getElementById('manage-sections-list');
+        
         if (!list) return;
 
-        // --- ADD THE AUTO-SLUGGER HERE ---
+        // --- Keep your Auto-Slugger Logic ---
         const titleInput = this.elements.title;
         const slugInput = document.getElementById('section-slug'); 
         const subpageGroup = document.getElementById('subpage-options');
 
-        if (subpageGroup) {
-            // We listen to ALL sections in the database
-            onSnapshot(collection(db, "page_sections"), (snapshot) => {
-                subpageGroup.innerHTML = ""; // Clear it out
-                
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    
-                    // If this section has a "Learn More" button, it IS a subpage!
-                    // So we add it to the dropdown using its slug as the destination.
-                    if (data.has_subpage) {
-                        const option = document.createElement('option');
-                        option.value = data.slug; // The target becomes the slug!
-                        option.textContent = `↳ Inside: ${data.title}`;
-                        subpageGroup.appendChild(option);
-                    }
-                });
-            });
-        }
-        
         if (titleInput && slugInput) {
             titleInput.addEventListener('input', () => {
                 const slugValue = titleInput.value
                     .toLowerCase()
                     .trim()
-                    .replace(/\s+/g, '-')           // Replace spaces with -
-                    .replace(/[^\w-]/g, '');        // Remove special chars
+                    .replace(/\s+/g, '-')
+                    .replace(/[^\w-]/g, '');
                 slugInput.value = slugValue;
             });
         }
 
-        // Listen for data from Firestore
+        // --- NEW: Grouped Accordion Logic ---
+        // We listen for data and group it by 'target_page'
         onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
-            list.innerHTML = ""; // Clear the "Loading..." text
+            list.innerHTML = ""; // Clear current list
             
+            const grouped = {};
+            // 1. Group the data
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                list.innerHTML += `
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>${data.title}</strong> 
-                            <small class="text-muted ms-2">(${data.target_page})</small>
-                        </div>
-                        <button class="btn btn-danger btn-sm" onclick="deleteSection('${doc.id}')">
-                            Delete
-                        </button>
-                    </div>`;
+                data.id = doc.id;
+                const page = data.target_page || "Other";
+                if (!grouped[page]) grouped[page] = [];
+                grouped[page].push(data);
             });
-            
-        });
 
-        
+            // 2. Build the Accordion
+            Object.keys(grouped).forEach((pageName, index) => {
+                const sections = grouped[pageName];
+                const collapseId = `collapse-${index}`;
+                
+                const accordionItem = document.createElement('div');
+                accordionItem.className = "accordion-item mb-2 border rounded shadow-sm";
+                
+                accordionItem.innerHTML = `
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold text-uppercase small" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                            <i class="bi bi-file-earmark-text me-2"></i> ${pageName} 
+                        </button>
+                    </h2>
+                    <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#manage-sections-accordion">
+                        <div class="accordion-body p-0">
+                            <div class="list-group list-group-flush">
+                                ${sections.map(sec => `
+                                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                        <div>
+                                            <span class="fw-bold d-block">${sec.title || "<em class='text-muted'>No Title (Text Block)</em>"}</span>
+                                            <code class="small text-muted">${sec.slug}</code>
+                                        </div>
+                                        
+                                        <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${sec.id}')">
+                                            Delete
+                                        </button>
+                                        
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(accordionItem);
+            });
+        });
     }
 
 };
