@@ -80,7 +80,7 @@
                     </div>
                 </div>
 
-                <!-- VIDEO SETTINGS -->
+                <!-- VIDEO SETTINGS
                 <div class="card p-4 shadow-sm">
                     <h3 class="mb-4">Video Settings</h3>
                     <div class="mb-3">
@@ -116,7 +116,7 @@
                         <button id="publish-video-live" class="btn btn-success">Publish to Live Site</button>
                     </div>
                 </div>
-
+ -->
                 <!-- CV SETTINGS -->
                 <div class="card p-4 shadow-sm mt-4">
                     <h3 class="mb-4">CV Settings</h3>
@@ -322,7 +322,60 @@
                         <label class="form-label fw-bold">Section Description (Text):</label>
                         <textarea id="edit-section-body" class="form-control" rows="6"></textarea>
                     </div>
-                
+
+                    <div class="mb-3 p-3 border rounded bg-light">
+                        <label class="form-label fw-bold mb-1"><i class="bi bi-play-btn-fill text-danger"></i> Video URL (Optional)</label>
+                        <small class="d-block text-muted mb-2">Paste a YouTube or Echo360 link here. Leave blank to remove the video from this section.</small>
+                        <input type="text" id="edit-section-video" class="form-control" placeholder="https://...">
+                        <div id="edit-video-preview-container" class="ratio ratio-16x9 mt-3 shadow-sm rounded overflow-hidden d-none">
+                            <iframe 
+                                id="edit-video-preview-iframe" 
+                                src="" 
+                                title="Video Preview"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                            </iframe>
+                        </div>
+                    </div>
+                    <div class="mb-3 border p-3 bg-light rounded">
+                        <label class="form-label fw-bold">Section Images & Carousels (Optional)</label>
+                        
+                        <div id="edit-image-preview-container" class="d-flex flex-wrap gap-3"></div>
+                        
+                        <label class="form-label small fw-bold mt-2">Add New Images:</label>
+                        <input type="file" id="edit-section-image" class="form-control form-control-sm" accept="image/*" multiple>
+                        <small class="form-text text-muted">Select one or more new images to append to this section.</small>
+                    </div>
+
+                    <div class="mb-3 border p-3 bg-light rounded">
+                        <label class="form-label fw-bold">Section PDF</label>
+                        
+                        <div id="edit-pdf-preview-container"></div>
+                        
+                        <label class="form-label small fw-bold">Upload a New PDF (Replaces current):</label>
+                        <input type="file" id="edit-section-pdf" class="form-control form-control-sm" accept="application/pdf">
+                    </div>
+
+                    <div class="mb-3 border p-3 bg-light rounded">
+                        <label class="form-label fw-bold">Section Data Table</label>
+                        
+                        <div id="edit-table-grid-container" class="table-responsive mb-2"></div>
+                        
+                        <label class="form-label small fw-bold mt-2">Replace or Create Table Grid:</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="number" id="edit-table-cols" class="form-control form-control-sm" placeholder="# of Cols" min="1">
+                            </div>
+                            <div class="col-4">
+                                <input type="number" id="edit-table-rows" class="form-control form-control-sm" placeholder="# of Rows" min="1">
+                            </div>
+                            <div class="col-4">
+                                <button type="button" id="edit-build-table-btn" class="btn btn-sm btn-secondary w-100 fw-bold">Build Grid</button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">To delete a row, delete all text inside it. To delete the whole table, empty all boxes.</small>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Button Text:</label>

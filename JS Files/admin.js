@@ -239,22 +239,6 @@ const VideoManager = {
     async init() {
         if (!this.elements.selector) return;
 
-        const dynamicVideoGroup = document.getElementById('dynamic-video-options');
-        if (dynamicVideoGroup) {
-            onSnapshot(collection(db, "page_sections"), (snapshot) => {
-                dynamicVideoGroup.innerHTML = ""; 
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.video_url) {
-                        const option = document.createElement('option');
-                        option.value = `page_sections|${doc.id}`; 
-                        option.textContent = `↳ Section: ${data.title}`;
-                        dynamicVideoGroup.appendChild(option);
-                    }
-                });
-            });
-        }
-
         await this.loadVideoData();
 
         this.elements.selector.addEventListener('change', (e) => {
@@ -790,7 +774,15 @@ const CVManager = {
 
 const SectionEditor = {
     // Array to hold all database sections in memory so it's super fast
-    allSections: [], 
+    allSections: [],
+    //This array will temporarily hold the existing images while we edit
+    currentImages: [],
+
+    // Track the currently saved PDF URL
+    currentPdfUrl: null,
+
+    //Track the currently saved Table Data
+    currentTableData: [],
 
     elements: {
         pageSelect: document.getElementById('edit-page-selector'),
@@ -798,6 +790,17 @@ const SectionEditor = {
         id: document.getElementById('edit-section-id'),
         title: document.getElementById('edit-section-title'),
         body: document.getElementById('edit-section-body'),
+        video: document.getElementById('edit-section-video'),
+        videoContainer: document.getElementById('edit-video-preview-container'),
+        videoPreview: document.getElementById('edit-video-preview-iframe'),
+        imagePreviewContainer: document.getElementById('edit-image-preview-container'),
+        imageInput: document.getElementById('edit-section-image'),
+        pdfPreviewContainer: document.getElementById('edit-pdf-preview-container'),
+        pdfInput: document.getElementById('edit-section-pdf'),
+        tableGridContainer: document.getElementById('edit-table-grid-container'),
+        tableColsInput: document.getElementById('edit-table-cols'),
+        tableRowsInput: document.getElementById('edit-table-rows'),
+        buildTableBtn: document.getElementById('edit-build-table-btn'),
         btnText: document.getElementById('edit-button-text'),
         subpageTitle: document.getElementById('edit-subpage-title'),
         saveBtn: document.getElementById('save-edit-btn')
@@ -815,6 +818,13 @@ const SectionEditor = {
         }
         if (this.elements.saveBtn) {
             this.elements.saveBtn.addEventListener('click', () => this.saveSectionEdits());
+        }
+        if (this.elements.video) {
+            // Triggers the preview every time the text in the box changes!
+            this.elements.video.addEventListener('input', (e) => this.updateVideoPreview(e.target.value));
+        }
+        if (this.elements.buildTableBtn) {
+            this.elements.buildTableBtn.addEventListener('click', () => this.buildNewEditGrid());
         }
     },
 
@@ -890,6 +900,22 @@ const SectionEditor = {
             this.elements.body.value = sectionData.body_text || "";
             this.elements.btnText.value = sectionData.button_text || "";
             this.elements.subpageTitle.value = sectionData.subpage_title || "";
+            if (this.elements.video) {
+                this.elements.video.value = sectionData.video_url || "";
+            }
+            //Trigger the preview to load the existing video
+            if (this.elements.video) {
+                this.elements.video.value = sectionData.video_url || "";
+                this.updateVideoPreview(sectionData.video_url || ""); 
+            }
+            this.currentImages = sectionData.carousel_images || [];
+            this.renderImagePreviews();
+
+            this.currentPdfUrl = sectionData.pdf_url || null;
+            this.renderPdfPreview()
+            // load existing table into memory and draw the grid
+            this.currentTableData = sectionData.table_data || [];
+            this.renderTableEditor();
         }
     },
 
@@ -899,6 +925,25 @@ const SectionEditor = {
         this.elements.body.value = "";
         this.elements.btnText.value = "";
         this.elements.subpageTitle.value = "";
+        if (this.elements.video) {
+            this.elements.video.value = "";
+        }
+        //Clear the preview
+        if (this.elements.video) {
+            this.elements.video.value = "";
+            this.updateVideoPreview(""); 
+        }
+        this.currentImages = [];
+        if (this.elements.imagePreviewContainer) this.elements.imagePreviewContainer.innerHTML = "";
+        if (this.elements.imageInput) this.elements.imageInput.value = "";
+
+        this.currentPdfUrl = null;
+        if (this.elements.pdfPreviewContainer) this.elements.pdfPreviewContainer.innerHTML = "";
+        if (this.elements.pdfInput) this.elements.pdfInput.value = "";
+
+        // Clear the Table tracker
+        this.currentTableData = [];
+        if (this.elements.tableGridContainer) this.elements.tableGridContainer.innerHTML = "";
     },
 
     async saveSectionEdits() {
@@ -906,25 +951,102 @@ const SectionEditor = {
         const updatedTitle = this.elements.title.value;
         const updatedBody = this.elements.body.value;
 
+        // Grab the video URL from the Edit Modal input
+        const videoInputEl = document.getElementById('edit-section-video');
+        const updatedVideo = videoInputEl ? videoInputEl.value.trim() : "";
+
         // Safety check to ensure they actually picked a section first!
         if (!sectionId) {
             alert("Please select a Page and a Section from the dropdown menus before saving!");
             return;
         }
 
-        if (!updatedTitle && !updatedBody) {
-            alert("Please provide at least a Title or a Description.");
-            return;
-        }
+// DISABLED: commented this out so you can save Video-only or PDF-only sections
+        // if (!updatedTitle && !updatedBody) {
+        //     alert("Please provide at least a Title or a Description.");
+        //     return;
+        // }
 
         try {
             this.elements.saveBtn.disabled = true;
             this.elements.saveBtn.innerText = "Saving to Database...";
+            
+            // Check if there are NEW images to upload
+            let newUploadedUrls = [];
+            const newFiles = this.elements.imageInput && this.elements.imageInput.files.length > 0 
+                             ? Array.from(this.elements.imageInput.files) : [];
 
+            if (newFiles.length > 0) {
+                console.log(`Uploading ${newFiles.length} new images...`);
+                for (const file of newFiles) {
+                    const storageRef = ref(storage, `section_images/${Date.now()}_${file.name}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    const downloadUrl = await getDownloadURL(snapshot.ref);
+                    newUploadedUrls.push(downloadUrl);
+                }
+            }
+
+            // Combine the old images we KEPT with the new images we UPLOADED
+            const finalImageArray = [...this.currentImages, ...newUploadedUrls];
+
+            //Handle the PDF Upload Logic
+            let finalPdfUrl = this.currentPdfUrl; // Start by assuming we keep the old one (or null if they deleted it)
+            const pdfFile = this.elements.pdfInput && this.elements.pdfInput.files.length > 0 
+                            ? this.elements.pdfInput.files[0] : null;
+            
+            if (pdfFile) {
+                console.log("Uploading NEW PDF...");
+                const pdfStorageRef = ref(storage, `section_pdfs/${Date.now()}_${pdfFile.name}`);
+                
+                // The magic metadata that prevents the download loop
+                const pdfMetadata = { 
+                    contentType: 'application/pdf',
+                    contentDisposition: 'inline'
+                };
+                
+                const pdfSnapshot = await uploadBytes(pdfStorageRef, pdfFile, pdfMetadata);
+                finalPdfUrl = await getDownloadURL(pdfSnapshot.ref); // Overwrite with the new link!
+            }
+
+            // Scrape the Edit Table Grid Data
+            let updatedTableData = [];
+            const editTableGrid = document.getElementById('edit-admin-table-grid');
+
+            if (editTableGrid) {
+                // Find out how big the grid is
+                const allInputs = editTableGrid.querySelectorAll('input[data-edit-row]');
+                if (allInputs.length > 0) {
+                    let maxRow = 0; let maxCol = 0;
+                    allInputs.forEach(input => {
+                        const r = parseInt(input.getAttribute('data-edit-row'));
+                        const c = parseInt(input.getAttribute('data-edit-col'));
+                        if (r > maxRow) maxRow = r;
+                        if (c > maxCol) maxCol = c;
+                    });
+
+                    // Scrape every box
+                    for (let r = 0; r <= maxRow; r++) {
+                        let rowArray = [];
+                        for (let c = 0; c <= maxCol; c++) {
+                            const input = document.querySelector(`input[data-edit-row="${r}"][data-edit-col="${c}"]`);
+                            rowArray.push(input ? input.value.trim() : "");
+                        }
+                        // Only push the row if it's not completely empty
+                        if (rowArray.some(val => val !== "")) {
+                            updatedTableData.push({ cells: rowArray });
+                        }
+                    }
+                }
+            }
+                            
             const docRef = doc(db, "page_sections", sectionId);
             await updateDoc(docRef, {
                 title: updatedTitle,
                 body_text: updatedBody,
+                video_url: updatedVideo,
+                carousel_images: finalImageArray,
+                pdf_url: finalPdfUrl,
+                table_data: updatedTableData,
                 button_text: this.elements.btnText.value,
                 subpage_title: this.elements.subpageTitle.value,
                 updatedAt: serverTimestamp()
@@ -939,7 +1061,171 @@ const SectionEditor = {
             this.elements.saveBtn.disabled = false;
             this.elements.saveBtn.innerText = "Save Changes";
         }
-    }
+    },
+
+    // Formats the URL and updates the live iframe
+    updateVideoPreview(url) {
+        if (!this.elements.videoPreview || !this.elements.videoContainer) return;
+
+        // If the box is empty, hide the preview window entirely
+        if (!url || url.trim() === "") {
+            this.elements.videoPreview.src = "";
+            this.elements.videoContainer.classList.add('d-none');
+            return;
+        }
+
+        let finalUrl = url;
+        
+        // Smart Passthrough (Formats YouTube links, leaves Echo360 alone)
+        if (finalUrl.includes("youtube.com/watch?v=")) {
+            finalUrl = finalUrl.replace("watch?v=", "embed/").split("&")[0];
+        } else if (finalUrl.includes("youtu.be/")) {
+            finalUrl = finalUrl.replace("youtu.be/", "youtube.com/embed/").split("?")[0];
+        }
+
+        this.elements.videoPreview.src = finalUrl;
+        this.elements.videoContainer.classList.remove('d-none'); // Unhide the window
+    },
+    //  Draws the image thumbnails with a delete button
+    renderImagePreviews() {
+        if (!this.elements.imagePreviewContainer) return;
+        this.elements.imagePreviewContainer.innerHTML = ""; // Clear existing thumbnails
+
+        if (this.currentImages.length === 0) {
+            this.elements.imagePreviewContainer.innerHTML = '<span class="text-muted small">No images currently saved.</span>';
+            return;
+        }
+
+        this.currentImages.forEach((url, index) => {
+            // Create a wrapper box for the image
+            const wrapper = document.createElement('div');
+            wrapper.className = "position-relative border rounded shadow-sm bg-white";
+            wrapper.style.width = "120px";
+            wrapper.style.height = "80px";
+
+            // Create the image thumbnail
+            const img = document.createElement('img');
+            img.src = url;
+            img.className = "w-100 h-100 rounded";
+            img.style.objectFit = "cover";
+
+            // Create the "X" Delete Button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = "button"; // Prevents accidental form submission
+
+            // 'X' icon
+            deleteBtn.innerHTML = '&times;'; 
+            
+            // Added d-flex utilities to center the icon inside the circle
+            deleteBtn.className = "btn btn-danger position-absolute top-0 end-0 m-1 rounded-circle shadow p-0 d-flex align-items-center justify-content-center";
+            
+            //  perfect circle: equal width and height
+            deleteBtn.style.width = "20px";
+            deleteBtn.style.height = "20px";
+            deleteBtn.style.fontSize = "16px"; // Sized to fit the smaller circle
+            deleteBtn.style.lineHeight = "1";  // Ensures the X stays perfectly vertically centered
+            
+            // When clicked, remove it from the array and re-draw the list
+            deleteBtn.onclick = () => {
+                this.currentImages.splice(index, 1); 
+                this.renderImagePreviews(); 
+            };
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(deleteBtn);
+            this.elements.imagePreviewContainer.appendChild(wrapper);
+        });
+    },
+
+    // Shows the current PDF and a delete button
+    renderPdfPreview() {
+        if (!this.elements.pdfPreviewContainer) return;
+
+        if (!this.currentPdfUrl) {
+            this.elements.pdfPreviewContainer.innerHTML = '<span class="text-muted small">No PDF currently saved.</span>';
+            return;
+        }
+
+        // Create a visual badge for the current PDF
+        this.elements.pdfPreviewContainer.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between border rounded p-2 bg-white shadow-sm">
+                <div class="text-truncate me-3">
+                    <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                    <a href="${this.currentPdfUrl}" target="_blank" class="small text-decoration-none">View Current PDF</a>
+                </div>
+                <button type="button" id="remove-pdf-btn" class="btn btn-sm btn-outline-danger shadow-sm">
+                    <i class="bi bi-trash"></i> Remove
+                </button>
+            </div>
+        `;
+
+        // Make the remove button actually work!
+        document.getElementById('remove-pdf-btn').addEventListener('click', () => {
+            this.currentPdfUrl = null; // Clear from memory
+            this.renderPdfPreview(); // Re-draw the UI to show "No PDF"
+        });
+    },
+
+    // Draws the existing table with pre-filled text boxes
+    renderTableEditor() {
+        if (!this.elements.tableGridContainer) return;
+
+        if (!this.currentTableData || this.currentTableData.length === 0) {
+            this.elements.tableGridContainer.innerHTML = '<span class="text-muted small">No table currently saved.</span>';
+            return;
+        }
+
+        const rowCount = this.currentTableData.length;
+        const colCount = this.currentTableData[0].cells.length;
+
+        let html = '<table class="table table-bordered table-sm bg-white" id="edit-admin-table-grid">';
+        for (let r = 0; r < rowCount; r++) {
+            html += '<tr>';
+            for (let c = 0; c < colCount; c++) {
+                const isHeader = r === 0 ? "fw-bold bg-light" : "";
+                const cellValue = this.currentTableData[r].cells[c] || "";
+                
+                // Replace quotes so they don't break the HTML attribute
+                const safeValue = cellValue.replace(/"/g, '&quot;'); 
+                
+                // We use data-edit-row so our scraper knows exactly where this data goes!
+                html += `<td><input type="text" class="form-control form-control-sm ${isHeader}" data-edit-row="${r}" data-edit-col="${c}" value="${safeValue}"></td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</table>';
+        this.elements.tableGridContainer.innerHTML = html;
+    },
+
+    // Overwrites the table with a blank grid if you want to start fresh or change dimensions
+    buildNewEditGrid() {
+        const cols = parseInt(this.elements.tableColsInput.value) || 0;
+        const rows = parseInt(this.elements.tableRowsInput.value) || 0;
+
+        if (cols === 0 || rows === 0) {
+            alert("Please enter both rows and columns to build a grid.");
+            return;
+        }
+
+        // Generate a blank array of objects to act as our new table
+        let newTable = [];
+        for (let r = 0; r < rows; r++) {
+            let newRow = [];
+            for (let c = 0; c < cols; c++) {
+                newRow.push("");
+            }
+            newTable.push({ cells: newRow });
+        }
+
+        // Save it and tell the renderer to draw it
+        this.currentTableData = newTable;
+        this.renderTableEditor();
+
+        // Clear the inputs
+        this.elements.tableColsInput.value = "";
+        this.elements.tableRowsInput.value = "";
+    },
+    
 };
 
 document.addEventListener('DOMContentLoaded', () => {
