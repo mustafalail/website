@@ -124,9 +124,30 @@ const SectionRenderer = {
         // Extract the custom text (with a fallback for older sections)
         const btnText = data.button_text || "Learn More";
 
-        let formattedBody = rawBody.replace(/\n/g, '<br>');
-        // This hunts for [Text](URL) and turns it into a blue, clickable link that opens in a new tab.
-        formattedBody = formattedBody.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" class="text-decoration-underline">$1</a>');
+        let formattedBody = rawBody;
+
+        // Convert bullet points: Finds lines starting with "- " or "* " and turns them into <li> tags
+        formattedBody = formattedBody.replace(/(?:^|\n)(?:-|\*)\s+(.*)/g, '\n<li>$1</li>');
+
+        // Wrap consecutive <li> tags in an indented <ul> wrapper
+        formattedBody = formattedBody.replace(/(?:\n<li>.*?<\/li>)+/g, function(match) {
+            return '\n<ul class="ms-4 mb-3 mt-2">' + match + '\n</ul>';
+        });
+
+        // Convert all remaining normal newlines to <br> (Standard paragraph spacing)
+        formattedBody = formattedBody.replace(/\n/g, '<br>');
+
+        // Cleanup: Remove awkward <br> tags that get generated directly inside the lists
+        formattedBody = formattedBody.replace(/<br><ul/g, '<ul');
+        formattedBody = formattedBody.replace(/<\/ul><br>/g, '</ul>');
+        formattedBody = formattedBody.replace(/<br><li>/g, '<li>');
+        formattedBody = formattedBody.replace(/<\/li><br>/g, '</li>');
+
+        // Hunts for **text** and turns it into Bootstrap-styled bold text
+        formattedBody = formattedBody.replace(/\*\*(.*?)\*\*/g, '<strong class="fw-bold">$1</strong>');
+
+        // The Hyperlink Formatter
+        formattedBody = formattedBody.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" class="text-primary text-decoration-underline fw-bold">$1</a>');
 
         // Logic to decide layout
         const isCarousel = images.length > 1;
@@ -277,7 +298,7 @@ const SectionRenderer = {
         const hasMiddleContent = singleImageHtml || (titleAlignClass !== 'text-center' && title) || formattedBody || tableHtml || videoHtml || data.has_subpage;
 
         return `
-        <section id="${sectionId}" class="container py-2 border-bottom">
+        <section id="${sectionId}" class="container p-2">
             <div class="container">
                 
                 ${(titleAlignClass === 'text-center' && title) ? `
@@ -317,6 +338,7 @@ const SectionRenderer = {
                 ${carouselHtml}
 
                 ${pdfHtml}
+                <hr>
             </div>
         </section>
     `;

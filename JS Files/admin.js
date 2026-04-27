@@ -912,8 +912,8 @@ const SectionEditor = {
             return;
         }
 
-        if (!updatedTitle || !updatedBody) {
-            alert("Title and Description cannot be empty.");
+        if (!updatedTitle && !updatedBody) {
+            alert("Please provide at least a Title or a Description.");
             return;
         }
 
