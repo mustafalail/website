@@ -155,6 +155,7 @@
                                 <option value="teachings.html">Teaching Page</option>
                                 <option value="service.html">Service Page</option>
                             </optgroup>
+                            <!--
                             <optgroup label="---- SUBPAGES ----">  
                                 <option value="scholarshipPerspective.html">↳ (Research): Research Statement</option>
                                 <option value="grants.html">↳ (Research): Grants</option>
@@ -163,8 +164,8 @@
                                 <option value="promotion-of-excellence.html">↳(Teaching): Undergraduate Research</option>
                                 <option value="teachingTech.html">↳(Teaching): Teaching Technologies</option>
                                 <option value="studentFeedback.html">↳(Teaching): Student Feedback to Improve Teaching</option>
-                            </optgroup>
-                            <optgroup label="---- DYNAMIC SUBPAGES ----" id="subpage-options">
+                            </optgroup>-->
+                            <optgroup label="---- SUBPAGES ----" id="subpage-options">
                             </optgroup>
                         </select>
                         <div class="form-text">Choose the main page where this new content will be added.</div>
@@ -186,6 +187,9 @@
                     <div class="mb-2">
                         <label class="form-label fw-bold">Section Description (Text): </label>
                         <textarea id="section-body" class="form-control" rows="4" placeholder="Describe this section..."></textarea>
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> To add a link, use this format: <b>[Link Text](https://website.com)</b>
+                        </small>
                     </div>
                     <div class="mb-2">
                         <label class="form-label fw-bold small text-uppercase">Description Alignment</label>
@@ -250,6 +254,25 @@
                             <input type="file" id="section-pdf" class="form-control form-control-sm" accept="application/pdf">
                             <small class="text-muted">Upload a PDF to embed it directly below this section's description.</small>
                         </div>
+                    </div>
+                    <hr>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold mb-1">Add a Data Table (Optional)</label>
+                        <small class="d-block text-muted mb-2">Specify dimensions and click 'Build Grid' to enter your data.</small>
+                        
+                        <div class="row g-2 mb-2">
+                            <div class="col-4">
+                                <input type="number" id="table-cols" class="form-control form-control-sm" placeholder="# of Columns" min="1" max="10">
+                            </div>
+                            <div class="col-4">
+                                <input type="number" id="table-rows" class="form-control form-control-sm" placeholder="# of Rows" min="1" max="20">
+                            </div>
+                            <div class="col-4">
+                                <button type="button" class="btn btn-sm btn-secondary w-100 fw-bold" onclick="generateTableEditor()">Build Grid</button>
+                            </div>
+                        </div>
+                        
+                        <div id="table-editor-container" class="table-responsive mt-3"></div>
                     </div>
 
                     <!-- Section Publish -->

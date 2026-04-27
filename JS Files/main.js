@@ -124,7 +124,9 @@ const SectionRenderer = {
         // Extract the custom text (with a fallback for older sections)
         const btnText = data.button_text || "Learn More";
 
-        const formattedBody = rawBody.replace(/\n/g, '<br>');
+        let formattedBody = rawBody.replace(/\n/g, '<br>');
+        // This hunts for [Text](URL) and turns it into a blue, clickable link that opens in a new tab.
+        formattedBody = formattedBody.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" class="text-decoration-underline">$1</a>');
 
         // Logic to decide layout
         const isCarousel = images.length > 1;
@@ -142,8 +144,8 @@ const SectionRenderer = {
         let singleImageHtml = "";
         if (hasSingleImg) {
             singleImageHtml = `
-                <div class="col-md-5 mb-3 mb-md-0 ${imgOrderClass}">
-                    <img src="${images[0]}" class="img-fluid rounded shadow-sm w-100" alt="${title}">
+                <div class="col-md-5 mb-4 mb-md-0 ${imgOrderClass}">
+                    <img src="${images[0]}" class="d-block mx-auto img-fluid rounded" alt="${title}">
                 </div>
             `;
         }
@@ -209,8 +211,8 @@ const SectionRenderer = {
         let pdfHtml = "";
         if (data.pdf_url) {
             pdfHtml = `
-                <div class="mt-4 mb-3 w-100">
-                    <object data="${data.pdf_url}" type="application/pdf" width="100%" height="600px" class="border rounded shadow-sm">
+                <div class="mt-1 mb-4 w-100">
+                    <object data="${data.pdf_url}" type="application/pdf" width="100%" style="height: 80vh; min-height: 600px;" class="border rounded shadow-sm">
                         <p class="text-muted p-3">Your browser does not support viewing PDFs directly. <br>
                         <a href="${data.pdf_url}" target="_blank" class="fw-bold">Download the document here.</a></p>
                     </object>
@@ -223,6 +225,31 @@ const SectionRenderer = {
             `;
         }
 
+        // Table Formatting Logic
+        let tableHtml = "";
+        if (data.table_data && data.table_data.length > 0) {
+            
+            tableHtml += `<div class="d-flex flex-wrap justify-content-center table-responsive medium mt-4">
+                            <table class="table table-striped table-sm table-responsive align-right">`;
+            
+            // Loop through our array of row objects
+            data.table_data.forEach((rowData, rowIndex) => {
+                tableHtml += `<tr>`;
+                
+                // Look inside the '.cells' wrapper to get the actual data array
+                rowData.cells.forEach(cell => {
+                    if (rowIndex === 0) {
+                        tableHtml += `<th>${cell}</th>`; 
+                    } else {
+                        tableHtml += `<td>${cell}</td>`; 
+                    }
+                });
+                
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `</table></div>`;
+        }
+        
         // Identify the base name (e.g., 'research' or 'teaching')
         let pageBase = data.target_page.replace('.html', ''); 
         // Explicitly handle the 'teachings' vs 'teaching' mismatch
@@ -246,39 +273,46 @@ const SectionRenderer = {
             // We are at root, go DOWN into the subpage folder
             buttonLink = `./${pageBase}-subpages/details.html?id=${data.slug}`;
         }
+
+        const hasMiddleContent = singleImageHtml || (titleAlignClass !== 'text-center' && title) || formattedBody || tableHtml || videoHtml || data.has_subpage;
+
         return `
-        <section id="${sectionId}" class="py-5 container border-bottom">
+        <section id="${sectionId}" class="container py-2 border-bottom">
             <div class="container">
                 
                 ${(titleAlignClass === 'text-center' && title) ? `
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <h2 class="fw-light ${titleAlignClass}">${title}</h2>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h2 class="fw-light ${titleAlignClass}">${title}</h2>
+                        </div>
                     </div>
-                </div>
-            ` : ''}
+                ` : ''}
 
-                <div class="row align-items-center p-4">
-                    
-                    ${singleImageHtml}
+                ${hasMiddleContent ? `
+                    <div class="row align-items-center p-3">
+                        
+                        ${singleImageHtml}
 
-                    <div class="${hasSingleImg ? 'col-md-7' : 'col-12'} ${textOrderClass}">
-                        
-                        ${titleAlignClass !== 'text-center' ? `
-                            <h2 class="mb-3 text-start">${title}</h2>
-                        ` : ''}
+                        <div class="${hasSingleImg ? 'col-md-7' : 'col-12'} ${textOrderClass}">
+                            
+                            ${(titleAlignClass !== 'text-center' && title) ? `
+                                <h2 class="mb-3 text-start fw-light">${title}</h2>
+                            ` : ''}
 
-                        <p class="lead text-start ${bodyAlignClass}">${formattedBody}</p>
-                        
-                        ${videoHtml}
-                        
-                        ${data.has_subpage ? `
-                            <div class="mt-4 text-start">
-                                <a href="${buttonLink}" class="btn btn-outline-secondary px-4">${btnText}</a>
-                            </div>
-                        ` : ''}
+                            <p class="lead text-start ${bodyAlignClass}">${formattedBody}</p>
+                            
+                            ${tableHtml}
+
+                            ${videoHtml}
+                            
+                            ${data.has_subpage ? `
+                                <div class="mt-4 text-start">
+                                    <a href="${buttonLink}" class="btn btn-outline-secondary px-4">${btnText}</a>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
-                </div>
+                ` : ''}
 
                 ${carouselHtml}
 

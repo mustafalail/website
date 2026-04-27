@@ -415,16 +415,37 @@ const SectionManager = {
         const pdfInput = document.getElementById('section-pdf');
         const pdfFile = pdfInput && pdfInput.files.length > 0 ? pdfInput.files[0] : null;
 
+        // the Table Grid Data 
+        // (This looks at the grid built and saves the rows/columns)
+        let tableData = [];
+        const tableGrid = document.getElementById('admin-table-grid');
+        if (tableGrid) {
+            const rowCount = parseInt(document.getElementById('table-rows').value);
+            const colCount = parseInt(document.getElementById('table-cols').value);
+            
+            for (let r = 0; r < rowCount; r++) {
+                let rowArray = [];
+                for (let c = 0; c < colCount; c++) {
+                    const input = document.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                    rowArray.push(input ? input.value.trim() : "");
+                }
+                
+                // Only push the row if it's not completely blank
+                if (rowArray.some(val => val !== "")) {
+                    tableData.push({ cells: rowArray }); 
+                }
+            }
+        }
         if (!generatedSlug) {
             if (title) {
                 generatedSlug = title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
             } else {
-                generatedSlug = "text-block-" + Math.floor(Math.random() * 100000);
+                generatedSlug = "context-block-" + Math.floor(Math.random() * 100000);
             }
         }
 
-        if (!title && !body) {
-            alert("Please fill in at least a Heading or a Description.");
+        if (!title && !body && !pdfFile) {
+            alert("Please fill in at least a Heading, a Description, or a pdf.");
             return;
         }
 
@@ -475,7 +496,8 @@ const SectionManager = {
                 carousel_images: carouselUrls,
                 image_alignment: imageAlignment,
                 video_url: videoUrl,
-                pdf_url: pdfUrl, // Saves the PDF link
+                pdf_url: pdfUrl, 
+                table_data: tableData,
                 has_subpage: hasButton,
                 button_text: customBtnText, // We'll use this key in main.js
                 subpage_title: customSubpageTitle,
@@ -495,19 +517,18 @@ const SectionManager = {
             this.elements.addBtn.innerText = "Add Section to Page";
         }
     },
-
+    
     // 1. Load and show the added sections (Grouped by Page)
     async init() {
         const accordionContainer = document.getElementById('manage-sections-accordion');
         // Fallback check for your previous ID if you haven't renamed it in HTML yet
         const list = accordionContainer || document.getElementById('manage-sections-list');
-        
+        const subpageGroup = document.getElementById('subpage-options');
         if (!list) return;
 
         // --- Keep your Auto-Slugger Logic ---
         const titleInput = this.elements.title;
         const slugInput = document.getElementById('section-slug'); 
-        const subpageGroup = document.getElementById('subpage-options');
 
         if (titleInput && slugInput) {
             titleInput.addEventListener('input', () => {
@@ -520,22 +541,41 @@ const SectionManager = {
             });
         }
 
-        // --- NEW: Grouped Accordion Logic ---
-        // We listen for data and group it by 'target_page'
+        // --- The Unified Live Listener ---
         onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
-            list.innerHTML = ""; // Clear current list
-            
+            // 1. Clear both containers before rebuilding
+            list.innerHTML = ""; 
+            if (subpageGroup) subpageGroup.innerHTML = '';
+
             const grouped = {};
-            // 1. Group the data
+
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 data.id = doc.id;
+                
+                // Group for the Accordion
                 const page = data.target_page || "Other";
                 if (!grouped[page]) grouped[page] = [];
                 grouped[page].push(data);
+
+                //  the Subpage Dropdown
+                if (subpageGroup && data.has_subpage && data.title) {
+                    // Clean the page name (e.g., 'research.html' -> 'Research')
+                    const rawPage = data.target_page || "Other";
+                    const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
+
+                    const displayName = data.subpage_title || data.title || data.slug;
+
+                    const option = document.createElement('option');
+                    option.value = data.slug;
+                    
+                    //Format: (Page Name) - Section Title
+                    option.textContent = `↳(${cleanPageName}) — ${displayName}`;
+                    subpageGroup.appendChild(option);
+                }
             });
 
-            // 2. Build the Accordion
+            // 2. Rebuild the Accordion HTML
             Object.keys(grouped).forEach((pageName, index) => {
                 const sections = grouped[pageName];
                 const collapseId = `collapse-${index}`;
@@ -555,14 +595,12 @@ const SectionManager = {
                                 ${sections.map(sec => `
                                     <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                                         <div>
-                                            <span class="fw-bold d-block">${sec.title || "<em class='text-muted'>No Title (Text Block)</em>"}</span>
+                                            <span class="fw-bold d-block">${sec.title || "No Title"}</span>
                                             <code class="small text-muted">${sec.slug}</code>
                                         </div>
-                                        
                                         <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${sec.id}')">
                                             Delete
                                         </button>
-                                        
                                     </div>
                                 `).join('')}
                             </div>
@@ -574,6 +612,33 @@ const SectionManager = {
         });
     }
 
+};
+
+// Generates the input grid for the Table Builder
+window.generateTableEditor = function() {
+    const cols = parseInt(document.getElementById('table-cols').value) || 0;
+    const rows = parseInt(document.getElementById('table-rows').value) || 0;
+    const container = document.getElementById('table-editor-container');
+
+    if (cols === 0 || rows === 0) {
+        container.innerHTML = "<p class='text-danger small'>Please enter both rows and columns.</p>";
+        return;
+    }
+
+    let html = '<table class="table table-bordered table-sm bg-white" id="admin-table-grid">';
+    for (let r = 0; r < rows; r++) {
+        html += '<tr>';
+        for (let c = 0; c < cols; c++) {
+            // Make the first row stand out as the Header row
+            const isHeader = r === 0 ? "fw-bold bg-light" : "";
+            const placeholder = r === 0 ? `Header ${c+1}` : `Data`;
+            
+            html += `<td><input type="text" class="form-control form-control-sm ${isHeader}" data-row="${r}" data-col="${c}" placeholder="${placeholder}"></td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</table>';
+    container.innerHTML = html;
 };
 
 // This attaches the internal function to the global 'window' object
