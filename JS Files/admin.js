@@ -525,75 +525,142 @@ const SectionManager = {
             });
         }
 
-        // --- The Unified Live Listener ---
-        onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
-            // 1. Clear both containers before rebuilding
-            list.innerHTML = ""; 
-            if (subpageGroup) subpageGroup.innerHTML = '';
+    // --- The Unified Live Listener ---
+    onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
+        // 1. Clear both containers before rebuilding
+        list.innerHTML = ""; 
+        if (subpageGroup) subpageGroup.innerHTML = ''; 
 
-            const grouped = {};
+        const allSections = [];
+        const sectionsBySlug = {};
+        const groupedByMainPage = {};
+        const childrenByParentSlug = {};
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                data.id = doc.id;
-                
-                // Group for the Accordion
-                const page = data.target_page || "Other";
-                if (!grouped[page]) grouped[page] = [];
-                grouped[page].push(data);
+        // 2. Initial Data Pass: Collect all data and update the Add Section Dropdown
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            data.id = doc.id;
+            allSections.push(data);
+            
+            // Store by slug so we can easily check if a section is a parent
+            if (data.slug) sectionsBySlug[data.slug] = data;
 
-                //  the Subpage Dropdown
-                if (subpageGroup && data.has_subpage && data.title) {
-                    // Clean the page name (e.g., 'research.html' -> 'Research')
-                    const rawPage = data.target_page || "Other";
-                    const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
+            // --- Keep Your Auto-Populate Subpage Dropdown Logic ---
+            if (subpageGroup && data.has_subpage && data.title) {
+                const rawPage = data.target_page || "Other";
+                const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
+                const displayName = data.subpage_title || data.title || data.slug;
 
-                    const displayName = data.subpage_title || data.title || data.slug;
+                const option = document.createElement('option');
+                option.value = data.slug;
+                option.textContent = `↳(${cleanPageName}) — ${displayName}`;
+                subpageGroup.appendChild(option);
+            }
+        });
 
-                    const option = document.createElement('option');
-                    option.value = data.slug;
+        // 3. Organize the Hierarchy: Separate Top-Level Sections from Child Sections
+        allSections.forEach(sec => {
+            const target = sec.target_page || "Other";
+            
+            // If the section's target_page matches another section's slug, it's a child!
+            if (sectionsBySlug[target]) {
+                if (!childrenByParentSlug[target]) childrenByParentSlug[target] = [];
+                childrenByParentSlug[target].push(sec);
+            } else {
+                // Otherwise, it's a top-level section on a main page
+                if (!groupedByMainPage[target]) groupedByMainPage[target] = [];
+                groupedByMainPage[target].push(sec);
+            }
+        });
+
+    // 4. Rebuild the Nested Accordion HTML
+    Object.keys(groupedByMainPage).forEach((pageName, index) => {
+        const topLevelSections = groupedByMainPage[pageName];
+        const collapseId = `collapse-${index}`;
+        
+        const accordionItem = document.createElement('div');
+        accordionItem.className = "accordion-item mb-2 border rounded shadow-sm";
+        
+        // Build the list of Top-Level Sections first
+        const sectionsHtml = topLevelSections.map(sec => {
+            const children = childrenByParentSlug[sec.slug] || [];
+            const hasChildren = sec.has_subpage || children.length > 0;
+            
+            // 🚀 FIX 1: Clean up Untitled Parent Sections
+            let displayTitle = sec.title || "Section Block";
+            // If it's an auto-generated context block, hide the ugly slug!
+            let displaySlug = sec.slug.includes('context-block') ? "" : `<code class="small text-muted">${sec.slug}</code>`;
+            
+            return `
+                <div class="list-group-item py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold d-block">${displayTitle}</span>
+                            ${displaySlug}
+                        </div>
+                        <div class="d-flex gap-2">
+                            ${hasChildren ? `
+                                <button class="btn btn-sm btn-outline-secondary shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#nested-${sec.id}">
+                                    View Subpage ▾
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${sec.id}')">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
                     
-                    //Format: (Page Name) - Section Title
-                    option.textContent = `↳(${cleanPageName}) — ${displayName}`;
-                    subpageGroup.appendChild(option);
-                }
-            });
+                    ${hasChildren ? `
+                        <div id="nested-${sec.id}" class="collapse mt-3">
+                            <div class="list-group list-group-flush border-start border-3 border-secondary ms-4 rounded shadow-sm">
+                                ${children.length > 0 ? children.map(child => {
+                                    
+                                    // 🚀 FIX 1 (Repeated for children): Clean up Untitled Child Sections
+                                    let childTitle = child.title || "Section Block";
+                                    let childSlugDisplay = child.slug.includes('context-block') ? "" : `<code class="small text-muted">${child.slug}</code>`;
 
-            // 2. Rebuild the Accordion HTML
-            Object.keys(grouped).forEach((pageName, index) => {
-                const sections = grouped[pageName];
-                const collapseId = `collapse-${index}`;
-                
-                const accordionItem = document.createElement('div');
-                accordionItem.className = "accordion-item mb-2 border rounded shadow-sm";
-                
-                accordionItem.innerHTML = `
-                    <h2 class="accordion-header">
-                        <button class="accordion-button collapsed fw-bold text-uppercase small" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
-                            <i class="bi bi-file-earmark-text me-2"></i> ${pageName} 
-                        </button>
-                    </h2>
-                    <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#manage-sections-accordion">
-                        <div class="accordion-body p-0">
-                            <div class="list-group list-group-flush">
-                                ${sections.map(sec => `
-                                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                    return `
+                                    <div class="list-group-item d-flex justify-content-between align-items-center bg-light py-2">
                                         <div>
-                                            <span class="fw-bold d-block">${sec.title || "No Title"}</span>
-                                            <code class="small text-muted">${sec.slug}</code>
+                                            <span class="fw-bold d-block text-secondary">↳ ${childTitle}</span>
+                                            ${childSlugDisplay}
                                         </div>
-                                        <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${sec.id}')">
+                                        <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${child.id}')">
                                             Delete
                                         </button>
                                     </div>
-                                `).join('')}
+                                    `;
+                                }).join('') : '<div class="list-group-item text-muted small bg-light py-2">No sections added to this subpage yet.</div>'}
                             </div>
                         </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+        // Wrap it all in the Main Page accordion
+        accordionItem.innerHTML = `
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed fw-bold text-uppercase small" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                    <i class="bi bi-file-earmark-text me-2"></i> ${pageName} 
+                </button>
+            </h2>
+            <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#manage-sections-accordion">
+                <div class="accordion-body p-0">
+                    <div class="list-group list-group-flush">
+                        ${sectionsHtml}
                     </div>
-                `;
-                list.appendChild(accordionItem);
-            });
-        });
+                </div>
+            </div>
+        `;
+        list.appendChild(accordionItem);
+    });
+
+
+
+        
+    });
+
     }
 
 };
@@ -832,27 +899,66 @@ const SectionEditor = {
         try {
             const querySnapshot = await getDocs(collection(db, "page_sections"));
             this.allSections = [];
-            const uniquePages = new Set();
 
-            // Store the data in memory and find all unique pages
+            // 1. Store all the data in memory (super fast for filtering later!)
             querySnapshot.forEach((docSnap) => {
                 const data = docSnap.data();
                 data.id = docSnap.id; 
                 this.allSections.push(data);
-                
-                if (data.target_page) {
-                    uniquePages.add(data.target_page);
-                }
             });
 
-            // Populate Dropdown 1 (The Pages)
+            // Clear the dropdown
             this.elements.pageSelect.innerHTML = '<option value="">-- Select a Page --</option>';
-            uniquePages.forEach(page => {
+
+            // 2. Build the Hardcoded MAIN PAGES Group
+            const mainOptGroup = document.createElement('optgroup');
+            mainOptGroup.label = "---- MAIN PAGES ----";
+            
+            const mainPages = [
+                { value: "index.html", text: "Home Page" },
+                { value: "cv.html", text: "CV Page" },
+                { value: "research.html", text: "Research Page" },
+                { value: "teachings.html", text: "Teaching Page" },
+                { value: "service.html", text: "Service Page" }
+            ];
+            
+            mainPages.forEach(page => {
                 const option = document.createElement('option');
-                option.value = page;
-                option.textContent = page; // E.g., 'index.html' or 'details.html'
-                this.elements.pageSelect.appendChild(option);
+                option.value = page.value;
+                option.textContent = page.text;
+                mainOptGroup.appendChild(option);
             });
+            
+            this.elements.pageSelect.appendChild(mainOptGroup);
+
+            // 3. Build the Dynamic SUBPAGES Group
+            const subOptGroup = document.createElement('optgroup');
+            subOptGroup.label = "---- SUBPAGES ----";
+
+            // Hunt through our memory for sections that act as parent subpages
+            const subpages = this.allSections.filter(sec => sec.has_subpage && sec.title);
+
+            if (subpages.length > 0) {
+                subpages.forEach(sec => {
+                    const rawPage = sec.target_page || "Other";
+                    // Clean up 'research.html' -> 'Research'
+                    const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
+                    const displayName = sec.subpage_title || sec.title || sec.slug;
+
+                    const option = document.createElement('option');
+                    // The value MUST be the slug, because child sections use the parent's slug as their target_page!
+                    option.value = sec.slug; 
+                    option.textContent = `↳(${cleanPageName}) — ${displayName}`;
+                    subOptGroup.appendChild(option);
+                });
+            } else {
+                const noOption = document.createElement('option');
+                noOption.disabled = true;
+                noOption.textContent = "No subpages available";
+                subOptGroup.appendChild(noOption);
+            }
+
+            this.elements.pageSelect.appendChild(subOptGroup);
 
         } catch (error) {
             console.error("Error loading sections:", error);

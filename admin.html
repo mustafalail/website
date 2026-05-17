@@ -80,43 +80,6 @@
                     </div>
                 </div>
 
-                <!-- VIDEO SETTINGS
-                <div class="card p-4 shadow-sm">
-                    <h3 class="mb-4">Video Settings</h3>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Select Video to Edit:</label>
-                        <select id="video-selector" class="form-select">
-                            <optgroup label="--- MAIN PAGES ---">
-                                <option value="video_content|home_grad_video">Homepage - Graduation Video</option>
-                            </optgroup>
-                            <optgroup label="--- NESTED SUBPAGES ---">
-                                <option value="video_content|sample-teaching-vid-1"> (Teaching: Curr. & Dev.) - Sample Teaching Materials (Video 1) </option>
-                                <option value="video_content|sample-teaching-vid-2"> (Teaching: Curriculum & Development) - Sample Teaching Materials (Video 2) </option>
-                                <option value="video_content|press-releases-research-video"> (Teaching: Undergrad Research) - Student Poster </option>
-                                <option value="video_content|promoting-teach-w-tech-vid-1"> (Teaching: Undergrad Research) - Promoting Teaching w/Tech (Echo360 - 1) </option>
-                                <option value="video_content|promoting-teach-w-tech-vid-2"> (Teaching: Undergrad Research) - Promoting Teaching w/Tech (Echo360 - 2) </option>
-                            </optgroup>
-                            <optgroup label="--- SECTION VIDEOS ---" id="dynamic-video-options"></optgroup>
-                        </select>
-                    </div>
-                    <div class="input-group mb-3">
-                        <input type="text" id="video-input" class="form-control" placeholder="YouTube URL">
-                        <button id="save-video-draft" class="btn btn-secondary">Update Preview</button>
-                        <div class="ratio ratio-16x9 mt-3 shadow-sm rounded overflow-hidden">
-                            <iframe 
-                                id="video-preview-iframe" 
-                                src="" 
-                                title="Video Preview"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen>
-                            </iframe>
-                        </div>
-                    </div>
-                    <div class="d-grid">
-                        <button id="publish-video-live" class="btn btn-success">Publish to Live Site</button>
-                    </div>
-                </div>
- -->
                 <!-- CV SETTINGS -->
                 <div class="card p-4 shadow-sm mt-4">
                     <h3 class="mb-4">CV Settings</h3>
@@ -155,16 +118,6 @@
                                 <option value="teachings.html">Teaching Page</option>
                                 <option value="service.html">Service Page</option>
                             </optgroup>
-                            <!--
-                            <optgroup label="---- SUBPAGES ----">  
-                                <option value="scholarshipPerspective.html">↳ (Research): Research Statement</option>
-                                <option value="grants.html">↳ (Research): Grants</option>
-                                <option value="teachPhilosophy.html">↳(Teaching): Teaching Philosophy </option>
-                                <option value="curriculumDevelopment.html">↳(Teaching): Curriculum & Course Development </option>
-                                <option value="promotion-of-excellence.html">↳(Teaching): Undergraduate Research</option>
-                                <option value="teachingTech.html">↳(Teaching): Teaching Technologies</option>
-                                <option value="studentFeedback.html">↳(Teaching): Student Feedback to Improve Teaching</option>
-                            </optgroup>-->
                             <optgroup label="---- SUBPAGES ----" id="subpage-options">
                             </optgroup>
                         </select>
@@ -296,14 +249,14 @@
                 <div class="card p-4 shadow-sm mt-4">
                     <h3 class="mb-4"><i class="bi bi-pencil-square"></i> Edit Existing Section</h3>
                     
-                    <div class="row mb-4 border-bottom pb-4">
-                        <div class="col-md-6 mb-2">
+                    <div class="mb-4 border-bottom pb-4">
+                        <div class="mb-3">
                             <label class="form-label fw-bold text-uppercase small">1. Select Target Page:</label>
                             <select id="edit-page-selector" class="form-select form-select-lg">
                                 <option value="">-- Loading Pages... --</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-2">
+                        <div class="mb-2">
                             <label class="form-label fw-bold text-uppercase small">2. Select Section to Edit:</label>
                             <select id="edit-section-selector" class="form-select form-select-lg">
                                 <option value="">-- Waiting for page selection --</option>

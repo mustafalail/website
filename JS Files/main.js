@@ -126,6 +126,7 @@ const SectionRenderer = {
 
         let formattedBody = rawBody;
 
+
         // Convert bullet points: Finds lines starting with "- " or "* " and turns them into <li> tags
         formattedBody = formattedBody.replace(/(?:^|\n)(?:-|\*)\s+(.*)/g, '\n<li>$1</li>');
 
@@ -295,11 +296,12 @@ const SectionRenderer = {
             buttonLink = `./${pageBase}-subpages/details.html?id=${data.slug}`;
         }
 
-        const hasMiddleContent = singleImageHtml || (titleAlignClass !== 'text-center' && title) || formattedBody || tableHtml || videoHtml || data.has_subpage;
+        const hasMiddleContent = singleImageHtml || title || rawBody.trim() !== "" || (data.table_data && data.table_data.length > 0) || data.video_url || data.has_subpage;
+
 
         return `
-        <section id="${sectionId}" class="container p-2">
-            <div class="container">
+        <section id="${sectionId}" class="container py-0 my-0">
+            <div class="container p-0">
                 
                 ${(titleAlignClass === 'text-center' && title) ? `
                     <div class="row mb-4">
@@ -310,7 +312,7 @@ const SectionRenderer = {
                 ` : ''}
 
                 ${hasMiddleContent ? `
-                    <div class="row align-items-center p-3">
+                    <div id="detail-content" class="row align-items-center justify-content-center p-3">
                         
                         ${singleImageHtml}
 
@@ -320,7 +322,7 @@ const SectionRenderer = {
                                 <h2 class="mb-3 text-start fw-light">${title}</h2>
                             ` : ''}
 
-                            <p class="lead text-start ${bodyAlignClass}">${formattedBody}</p>
+                            <div class="lead text-start fw-light ${bodyAlignClass}">${formattedBody}</div>
                             
                             ${tableHtml}
 
@@ -337,7 +339,13 @@ const SectionRenderer = {
 
                 ${carouselHtml}
 
-                ${pdfHtml}
+                ${pdfHtml ? `
+                    <div class="row m-0 p-0">
+                        <div class="col-12 p-0">
+                            ${pdfHtml}
+                        </div>
+                    </div>
+                ` : ''}
                 <hr>
             </div>
         </section>
