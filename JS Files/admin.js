@@ -38,7 +38,6 @@ onAuthStateChanged(auth, (user) => {
             // Wrap in a try-block to prevent script death
             try {
                 FooterManager.init();
-                VideoManager.init();
                 SectionManager.init();
             } catch (err) {
                 console.error("Manager Initialization Error:", err);
@@ -222,128 +221,37 @@ const ProfileManager = {
     }
 };
 
-/**
- * -- Video Settings --
- * Handles multiple video entries, each with its own draft vs. live logic and preview.
- */
-const VideoManager = {
-    activeDocId: 'video_content|home_grad_video', 
-    
-    elements: {
-        selector: document.getElementById('video-selector'),
-        input: document.getElementById('video-input'),
-        iframe: document.getElementById('video-preview-iframe'),
-        status: document.getElementById('video-sync-status')
-    },
+// Live Video Preview for "Add Section" (Reusing your Smart Passthrough logic!)
+const addVideoInput = document.getElementById('section-video');
+const addVideoPreviewContainer = document.getElementById('add-video-preview-container');
+const addVideoPreviewIframe = document.getElementById('add-video-preview-iframe');
 
-    async init() {
-        if (!this.elements.selector) return;
-
-        await this.loadVideoData();
-
-        this.elements.selector.addEventListener('change', (e) => {
-            this.activeDocId = e.target.value;
-            this.loadVideoData();
-        });
-
-        document.getElementById('save-video-draft')?.addEventListener('click', () => this.saveDraft());
-        document.getElementById('publish-video-live')?.addEventListener('click', () => this.publishLive());
-    },
-
-    async loadVideoData() {
-        const [collectionName, docId] = this.activeDocId.split('|');
-        const videoRef = doc(db, collectionName, docId);
-        const docSnap = await getDoc(videoRef);
+if (addVideoInput) {
+    addVideoInput.addEventListener('input', (e) => {
+        const url = e.target.value.trim();
         
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            let currentVideo = "";
-            
-            if (collectionName === "video_content") {
-                currentVideo = data.draft_url || data.live_url || "";
-                this.updateStatusUI(data.draft_url === data.live_url);
-            } else {
-                currentVideo = data.video_url || "";
-                this.updateStatusUI(true); 
-            }
-            
-            this.elements.input.value = currentVideo;
-            this.updatePreview(currentVideo);
-        } else {
-            //  If the document doesn't exist yet, clear the boxes so it doesn't look stuck!
-            this.elements.input.value = "";
-            this.updatePreview("");
-            this.updateStatusUI(false);
-        }
-    },
-
-    updatePreview(url) {
-        if (!this.elements.iframe) return;
+        // If the box is empty, hide the preview window entirely
         if (!url) {
-            this.elements.iframe.src = "";
+            addVideoPreviewContainer.classList.add('d-none');
+            addVideoPreviewIframe.src = "";
             return;
         }
-
+        
         let finalUrl = url;
-        // Smart Passthrough (Allows Echo360 and formats YouTube)
+        
+        // YOUR Smart Passthrough Logic (Formats YouTube links, leaves Echo360 alone)
         if (finalUrl.includes("youtube.com/watch?v=")) {
             finalUrl = finalUrl.replace("watch?v=", "embed/").split("&")[0];
         } else if (finalUrl.includes("youtu.be/")) {
             finalUrl = finalUrl.replace("youtu.be/", "youtube.com/embed/").split("?")[0];
         }
-
-        this.elements.iframe.src = finalUrl;
-    },
-
-    async saveDraft() {
-        const [collectionName, docId] = this.activeDocId.split('|');
-        const newVal = this.elements.input.value;
-
-        if (collectionName === "video_content") {
-            const videoRef = doc(db, collectionName, docId);
-            // setDoc with merge prevents the crash/freeze!
-            await setDoc(videoRef, { draft_url: newVal }, { merge: true });
-            this.updateStatusUI(false);
-            alert(`Draft saved!`);
-        } else {
-            this.updateStatusUI(false); 
-        }
         
-        this.updatePreview(newVal);
-    },
-
-    async publishLive() {
-        const [collectionName, docId] = this.activeDocId.split('|');
-        const videoRef = doc(db, collectionName, docId);
-
-        if (collectionName === "video_content") {
-            const docSnap = await getDoc(videoRef);
-            const draftVal = (docSnap.exists() && docSnap.data().draft_url) 
-                             ? docSnap.data().draft_url 
-                             : this.elements.input.value;
-            //Doc prevents crash
-            await setDoc(videoRef, { live_url: draftVal }, { merge: true });
-        } else {
-            const newVal = this.elements.input.value;
-            // setDoc prevents crash
-            await setDoc(videoRef, { video_url: newVal }, { merge: true });
-        }
-
-        this.updateStatusUI(true);
-        alert("This video is now LIVE on the website.");
-    },
-
-    updateStatusUI(isSynced) {
-        if (!this.elements.status) return;
-        if (isSynced) {
-            this.elements.status.innerText = "Status: Synced with live site";
-            this.elements.status.className = "form-text text-success mt-2";
-        } else {
-            this.elements.status.innerText = "Status: Changes pending (Not Live)";
-            this.elements.status.className = "form-text text-warning mt-2 fw-bold";
-        }
-    }
+        // Unhide the window and set the source
+        addVideoPreviewIframe.src = finalUrl;
+        addVideoPreviewContainer.classList.remove('d-none');
+    });
 };
+
 // Section Manager -- This handles adding new sections to pages, including image uploads and draft vs. live logic for each section.
 // It also loads the existing sections into the management list and allows deletion.
 const SectionManager = {
@@ -382,6 +290,9 @@ const SectionManager = {
         const alignEl = document.getElementById('image-alignment');
         const imageAlignment = alignEl ? alignEl.value : "left"; // Defaults to left if HTML is missing
 
+        // Grab the single image caption
+        const imageCaption = document.getElementById('section-image-caption') ? document.getElementById('section-image-caption').value.trim() : "";
+
         const titleAlignEl = document.getElementById('title-alignment');
         const titleAlignment = titleAlignEl ? titleAlignEl.value : "text-start"; 
 
@@ -394,10 +305,19 @@ const SectionManager = {
         // Grab the Video URL safely
         const videoEl = document.getElementById('section-video');
         const videoUrl = videoEl ? videoEl.value.trim() : "";
+        const videoCaption = document.getElementById('section-video-caption').value;
+        
         
         // Grab the PDF file safely
         const pdfInput = document.getElementById('section-pdf');
         const pdfFile = pdfInput && pdfInput.files.length > 0 ? pdfInput.files[0] : null;
+
+        const isCollapsible = document.getElementById('section-is-collapsible') ? document.getElementById('section-is-collapsible').checked : false;
+
+        // Grab the captions and split them into an array based on line breaks
+        const carouselCaptionsRaw = document.getElementById('section-carousel-captions') ? document.getElementById('section-carousel-captions').value : "";
+        const carouselCaptions = carouselCaptionsRaw.split('\n').map(c => c.trim());
+
 
         // the Table Grid Data 
         // (This looks at the grid built and saves the rows/columns)
@@ -428,8 +348,8 @@ const SectionManager = {
             }
         }
 
-        if (!title && !body && !pdfFile) {
-            alert("Please fill in at least a Heading, a Description, or a pdf.");
+        if (!title && !body && !pdfFile && files.length === 0 && !videoUrl) {
+            alert("Please provide at least a Title, Description, Image, Video, or PDF to create a section.");
             return;
         }
 
@@ -475,11 +395,15 @@ const SectionManager = {
                 target_page: location,
                 title: title,
                 body_text: body,
+                is_collapsible: isCollapsible,
                 title_alignment: titleAlignment,
                 body_alignment: bodyAlignment,
                 carousel_images: carouselUrls,
+                carousel_captions: carouselCaptions,
                 image_alignment: imageAlignment,
+                image_caption: imageCaption,
                 video_url: videoUrl,
+                video_caption: videoCaption,
                 pdf_url: pdfUrl, 
                 table_data: tableData,
                 has_subpage: hasButton,
@@ -525,141 +449,180 @@ const SectionManager = {
             });
         }
 
-    // --- The Unified Live Listener ---
-    onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
-        // 1. Clear both containers before rebuilding
-        list.innerHTML = ""; 
-        if (subpageGroup) subpageGroup.innerHTML = ''; 
-
-        const allSections = [];
-        const sectionsBySlug = {};
-        const groupedByMainPage = {};
-        const childrenByParentSlug = {};
-
-        // 2. Initial Data Pass: Collect all data and update the Add Section Dropdown
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            data.id = doc.id;
-            allSections.push(data);
-            
-            // Store by slug so we can easily check if a section is a parent
-            if (data.slug) sectionsBySlug[data.slug] = data;
-
-            // --- Keep Your Auto-Populate Subpage Dropdown Logic ---
-            if (subpageGroup && data.has_subpage && data.title) {
-                const rawPage = data.target_page || "Other";
-                const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
-                const displayName = data.subpage_title || data.title || data.slug;
-
-                const option = document.createElement('option');
-                option.value = data.slug;
-                option.textContent = `↳(${cleanPageName}) — ${displayName}`;
-                subpageGroup.appendChild(option);
-            }
-        });
-
-        // 3. Organize the Hierarchy: Separate Top-Level Sections from Child Sections
-        allSections.forEach(sec => {
-            const target = sec.target_page || "Other";
-            
-            // If the section's target_page matches another section's slug, it's a child!
-            if (sectionsBySlug[target]) {
-                if (!childrenByParentSlug[target]) childrenByParentSlug[target] = [];
-                childrenByParentSlug[target].push(sec);
-            } else {
-                // Otherwise, it's a top-level section on a main page
-                if (!groupedByMainPage[target]) groupedByMainPage[target] = [];
-                groupedByMainPage[target].push(sec);
-            }
-        });
-
-    // 4. Rebuild the Nested Accordion HTML
-    Object.keys(groupedByMainPage).forEach((pageName, index) => {
-        const topLevelSections = groupedByMainPage[pageName];
-        const collapseId = `collapse-${index}`;
-        
-        const accordionItem = document.createElement('div');
-        accordionItem.className = "accordion-item mb-2 border rounded shadow-sm";
-        
-        // Build the list of Top-Level Sections first
-        const sectionsHtml = topLevelSections.map(sec => {
-            const children = childrenByParentSlug[sec.slug] || [];
-            const hasChildren = sec.has_subpage || children.length > 0;
-            
-            // 🚀 FIX 1: Clean up Untitled Parent Sections
-            let displayTitle = sec.title || "Section Block";
-            // If it's an auto-generated context block, hide the ugly slug!
-            let displaySlug = sec.slug.includes('context-block') ? "" : `<code class="small text-muted">${sec.slug}</code>`;
-            
-            return `
-                <div class="list-group-item py-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="fw-bold d-block">${displayTitle}</span>
-                            ${displaySlug}
-                        </div>
-                        <div class="d-flex gap-2">
-                            ${hasChildren ? `
-                                <button class="btn btn-sm btn-outline-secondary shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#nested-${sec.id}">
-                                    View Subpage ▾
-                                </button>
-                            ` : ''}
-                            <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${sec.id}')">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
+        onSnapshot(query(collection(db, "page_sections"), orderBy("createdAt", "desc")), (snapshot) => {
+            // 1. Clear both containers before rebuilding
+            list.innerHTML = ""; 
+            if (subpageGroup) subpageGroup.innerHTML = ''; 
+    
+            const allSections = [];
+            const sectionsBySlug = {};
+            const groupedByMainPage = {};
+            const childrenByParentSlug = {};
+    
+            // 2. Initial Data Pass: Collect all data and update the Add Section Dropdown
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                data.id = doc.id;
+                allSections.push(data);
+                
+                // Store by slug so we can easily check if a section is a parent
+                if (data.slug) sectionsBySlug[data.slug] = data;
+    
+                // ---  Auto-Populate Subpage Dropdown Logic ---
+                if (subpageGroup && data.has_subpage && data.title) {
+                    const rawPage = data.target_page || "Other";
+                    let prefix = "↳";
+                    let pageIndicator = "";
+    
+                    // If the target is an HTML page, this is a standard Level 1 Subpage
+                    if (rawPage.includes('.html')) {
+                        const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
+                        pageIndicator = `(${cleanPageName} Subpage)`;
+                    } else {
+                        // If the target is NOT an HTML page (it's a slug), this is a Level 2 Mini-Subpage!
+                        prefix = "↳↳";
+                        pageIndicator = `(Mini-Subpage)`;
+                    }
+    
+                    const displayName = data.subpage_title || data.title || data.slug;
+                    const option = document.createElement('option');
+                    option.value = data.slug;
+                    option.textContent = `${prefix} ${pageIndicator} — ${displayName}`;
+                    subpageGroup.appendChild(option);
+                }
+            });
+    
+            // 3. Organize the Hierarchy: Separate Top-Level Sections from Child Sections
+            allSections.forEach(sec => {
+                const target = sec.target_page || "Other";
+                
+                // If the section's target_page matches another section's slug, it's a child!
+                if (sectionsBySlug[target]) {
+                    if (!childrenByParentSlug[target]) childrenByParentSlug[target] = [];
+                    childrenByParentSlug[target].push(sec);
+                } else {
+                    // Otherwise, it's a top-level section on a main page
+                    if (!groupedByMainPage[target]) groupedByMainPage[target] = [];
+                    groupedByMainPage[target].push(sec);
+                }
+            });
+    
+            // 4. Rebuild the Nested Accordion HTML
+            Object.keys(groupedByMainPage).forEach((pageName, index) => {
+                const topLevelSections = groupedByMainPage[pageName];
+                const collapseId = `collapse-${index}`;
+                
+                const accordionItem = document.createElement('div');
+                accordionItem.className = "accordion-item mb-2 border rounded shadow-sm";
+                
+                // Build the list of Top-Level Sections first
+                const sectionsHtml = topLevelSections.map(sec => {
+                    const children = childrenByParentSlug[sec.slug] || [];
+                    const hasChildren = sec.has_subpage || children.length > 0;
                     
-                    ${hasChildren ? `
-                        <div id="nested-${sec.id}" class="collapse mt-3">
-                            <div class="list-group list-group-flush border-start border-3 border-secondary ms-4 rounded shadow-sm">
-                                ${children.length > 0 ? children.map(child => {
-                                    
-                                    // 🚀 FIX 1 (Repeated for children): Clean up Untitled Child Sections
-                                    let childTitle = child.title || "Section Block";
-                                    let childSlugDisplay = child.slug.includes('context-block') ? "" : `<code class="small text-muted">${child.slug}</code>`;
-
-                                    return `
-                                    <div class="list-group-item d-flex justify-content-between align-items-center bg-light py-2">
-                                        <div>
-                                            <span class="fw-bold d-block text-secondary">↳ ${childTitle}</span>
-                                            ${childSlugDisplay}
-                                        </div>
-                                        <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${child.id}')">
-                                            Delete
+                    // Smarter Name Cleaner
+                    const getCleanName = (item) => {
+                        if (item.title) return item.title;
+                        if (item.subpage_title) return item.subpage_title;
+                        let clean = item.slug.replace(/[0-9]/g, '').replace(/-/g, ' ').trim();
+                        return clean.replace(/\b\w/g, char => char.toUpperCase()) || "Unnamed Section";
+                    };
+    
+                    const parentName = getCleanName(sec);
+                    let displaySlug = sec.slug.includes('context-block') ? "" : `<code class="small text-muted">${sec.slug}</code>`;
+    
+                    return `
+                        <div class="list-group-item py-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-bold d-block">${parentName}</span>
+                                    ${displaySlug}
+                                </div>
+                                <div class="d-flex gap-2">
+                                    ${hasChildren ? `
+                                        <button class="btn btn-sm btn-outline-secondary shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#nested-${sec.id}">
+                                            Subpage ▾
                                         </button>
+                                    ` : ''}
+                                    <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${sec.id}')">Delete</button>
+                                </div>
+                            </div>
+                            
+                            ${hasChildren ? `
+                                <div id="nested-${sec.id}" class="collapse mt-3">
+                                    <div class="list-group list-group-flush border-start border-3 border-secondary ms-4 rounded shadow-sm">
+                                        ${children.length > 0 ? children.map(child => {
+                                            const childName = getCleanName(child);
+                                            let childSlugDisplay = child.slug.includes('context-block') ? "" : `<code class="small text-muted">${child.slug}</code>`;
+                                            
+                                            // LEVEL 3: Check for Mini-Subpages (Grandchildren)
+                                            const grandChildren = childrenByParentSlug[child.slug] || [];
+                                            const hasGrandChildren = child.has_subpage || grandChildren.length > 0;
+                                            
+                                            return `
+                                                <div class="list-group-item bg-light py-2">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <span class="fw-bold d-block text-secondary">↳ ${childName}</span>
+                                                            ${childSlugDisplay}
+                                                        </div>
+                                                        <div class="d-flex gap-2">
+                                                            ${hasGrandChildren ? `
+                                                                <button class="btn btn-sm btn-outline-info shadow-sm py-0" type="button" data-bs-toggle="collapse" data-bs-target="#nested-${child.id}">
+                                                                    Mini-Subpage ▾
+                                                                </button>
+                                                            ` : ''}
+                                                            <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${child.id}')">Delete</button>
+                                                        </div>
+                                                    </div>
+    
+                                                    ${hasGrandChildren ? `
+                                                        <div id="nested-${child.id}" class="collapse mt-2">
+                                                            <div class="list-group list-group-flush border-start border-3 border-info ms-4 rounded shadow-sm">
+                                                                ${grandChildren.length > 0 ? grandChildren.map(grandChild => {
+                                                                    const grandChildName = getCleanName(grandChild);
+                                                                    let grandChildSlugDisplay = grandChild.slug.includes('context-block') ? "" : `<code class="small text-muted">${grandChild.slug}</code>`;
+                                                                    return `
+                                                                        <div class="list-group-item d-flex justify-content-between align-items-center py-2" style="background-color: #f8f9fa;">
+                                                                            <div>
+                                                                                <span class="fw-bold d-block text-info">↳↳ ${grandChildName}</span>
+                                                                                ${grandChildSlugDisplay}
+                                                                            </div>
+                                                                            <button class="btn btn-danger btn-sm px-3 shadow-sm" onclick="deleteSection('${grandChild.id}')">Delete</button>
+                                                                        </div>
+                                                                    `;
+                                                                }).join('') : '<div class="list-group-item text-muted small py-2">No sections added to this mini-subpage yet.</div>'}
+                                                            </div>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                            `;
+                                        }).join('') : '<div class="list-group-item text-muted small bg-light py-2">No sections added to this subpage yet.</div>'}
                                     </div>
-                                    `;
-                                }).join('') : '<div class="list-group-item text-muted small bg-light py-2">No sections added to this subpage yet.</div>'}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+    
+                // Wrap it all in the Main Page accordion
+                accordionItem.innerHTML = `
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold text-uppercase small" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+                            <i class="bi bi-file-earmark-text me-2"></i> ${pageName} 
+                        </button>
+                    </h2>
+                    <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#manage-sections-accordion">
+                        <div class="accordion-body p-0">
+                            <div class="list-group list-group-flush">
+                                ${sectionsHtml}
                             </div>
                         </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
-
-        // Wrap it all in the Main Page accordion
-        accordionItem.innerHTML = `
-            <h2 class="accordion-header">
-                <button class="accordion-button collapsed fw-bold text-uppercase small" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
-                    <i class="bi bi-file-earmark-text me-2"></i> ${pageName} 
-                </button>
-            </h2>
-            <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#manage-sections-accordion">
-                <div class="accordion-body p-0">
-                    <div class="list-group list-group-flush">
-                        ${sectionsHtml}
                     </div>
-                </div>
-            </div>
-        `;
-        list.appendChild(accordionItem);
-    });
-
-
-
-        
-    });
+                `;
+                list.appendChild(accordionItem);
+            });
+        });
 
     }
 
@@ -857,9 +820,14 @@ const SectionEditor = {
         id: document.getElementById('edit-section-id'),
         title: document.getElementById('edit-section-title'),
         body: document.getElementById('edit-section-body'),
+        isCollapsible: document.getElementById('edit-section-is-collapsible'),
+        carouselCaptions: document.getElementById('edit-section-carousel-captions'),
         video: document.getElementById('edit-section-video'),
+        videoCaption: document.getElementById('edit-section-video-caption'),
         videoContainer: document.getElementById('edit-video-preview-container'),
         videoPreview: document.getElementById('edit-video-preview-iframe'),
+        imageAlignment: document.getElementById('edit-image-alignment'),
+        imageCaption: document.getElementById('edit-section-image-caption'),
         imagePreviewContainer: document.getElementById('edit-image-preview-container'),
         imageInput: document.getElementById('edit-section-image'),
         pdfPreviewContainer: document.getElementById('edit-pdf-preview-container'),
@@ -931,7 +899,7 @@ const SectionEditor = {
             
             this.elements.pageSelect.appendChild(mainOptGroup);
 
-            // 3. Build the Dynamic SUBPAGES Group
+            // 3. 🚀 UPGRADED: Build the Dynamic SUBPAGES Group
             const subOptGroup = document.createElement('optgroup');
             subOptGroup.label = "---- SUBPAGES ----";
 
@@ -941,14 +909,25 @@ const SectionEditor = {
             if (subpages.length > 0) {
                 subpages.forEach(sec => {
                     const rawPage = sec.target_page || "Other";
-                    // Clean up 'research.html' -> 'Research'
-                    const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
+                    let prefix = "↳";
+                    let pageIndicator = "";
+
+                    // 🚀 NEW: Level 1 vs Level 2 detection logic
+                    if (rawPage.includes('.html')) {
+                        const cleanPageName = rawPage.replace('.html', '').charAt(0).toUpperCase() + rawPage.replace('.html', '').slice(1);
+                        pageIndicator = `(${cleanPageName} Subpage)`;
+                    } else {
+                        // If it doesn't have .html, it's a child of another slug!
+                        prefix = "↳↳";
+                        pageIndicator = `(Mini-Subpage)`;
+                    }
+
                     const displayName = sec.subpage_title || sec.title || sec.slug;
 
                     const option = document.createElement('option');
                     // The value MUST be the slug, because child sections use the parent's slug as their target_page!
                     option.value = sec.slug; 
-                    option.textContent = `↳(${cleanPageName}) — ${displayName}`;
+                    option.textContent = `${prefix} ${pageIndicator} — ${displayName}`;
                     subOptGroup.appendChild(option);
                 });
             } else {
@@ -996,32 +975,55 @@ const SectionEditor = {
         if (!sectionId) {
             this.clearForm();
             return;
-        }
-
+        }       
+        
         // Find the chosen section in memory and push text to the form
         const sectionData = this.allSections.find(sec => sec.id === sectionId);
+
         if (sectionData) {
             this.elements.id.value = sectionId;
             this.elements.title.value = sectionData.title || "";
             this.elements.body.value = sectionData.body_text || "";
-            this.elements.btnText.value = sectionData.button_text || "";
-            this.elements.subpageTitle.value = sectionData.subpage_title || "";
-            if (this.elements.video) {
-                this.elements.video.value = sectionData.video_url || "";
+
+            //  Removed the duplicate, unprotected lines from here!
+
+            //Added safety checks! Now it won't crash if these boxes are missing from the HTML.
+            if (this.elements.btnText) {
+                this.elements.btnText.value = sectionData.button_text || "";
             }
-            //Trigger the preview to load the existing video
+            if (this.elements.subpageTitle) {
+                this.elements.subpageTitle.value = sectionData.subpage_title || "";
+            }
+            if (this.elements.videoCaption) {
+                this.elements.videoCaption.value = sectionData.video_caption || "";
+            }
             if (this.elements.video) {
                 this.elements.video.value = sectionData.video_url || "";
                 this.updateVideoPreview(sectionData.video_url || ""); 
             }
+            if (this.elements.isCollapsible) {
+                this.elements.isCollapsible.checked = sectionData.is_collapsible || false;
+            }
+            
             this.currentImages = sectionData.carousel_images || [];
             this.renderImagePreviews();
 
             this.currentPdfUrl = sectionData.pdf_url || null;
-            this.renderPdfPreview()
+            this.renderPdfPreview();
+            
             // load existing table into memory and draw the grid
             this.currentTableData = sectionData.table_data || [];
             this.renderTableEditor();
+
+            if (this.elements.imageAlignment) {
+                this.elements.imageAlignment.value = sectionData.image_alignment || "left";
+            }
+            if (this.elements.imageCaption) {
+                this.elements.imageCaption.value = sectionData.image_caption || "";
+            }
+            if (this.elements.carouselCaptions) {
+                this.elements.carouselCaptions.value = (sectionData.carousel_captions || []).join('\n');
+            }
         }
     },
 
@@ -1029,16 +1031,33 @@ const SectionEditor = {
         this.elements.id.value = "";
         this.elements.title.value = "";
         this.elements.body.value = "";
-        this.elements.btnText.value = "";
-        this.elements.subpageTitle.value = "";
-        if (this.elements.video) {
-            this.elements.video.value = "";
-        }
-        //Clear the preview
+
+        // 🚀 FIXED: Removed the duplicate, unprotected lines from here too!
+
+        // Added safety checks here 
+        if (this.elements.btnText) this.elements.btnText.value = "";
+        if (this.elements.subpageTitle) this.elements.subpageTitle.value = "";
+
         if (this.elements.video) {
             this.elements.video.value = "";
             this.updateVideoPreview(""); 
         }
+        if (this.elements.videoCaption) {
+            this.elements.videoCaption.value = "";
+        }
+        if (this.elements.isCollapsible) {
+            this.elements.isCollapsible.checked = false;
+        }
+        if (this.elements.carouselCaptions){
+            this.elements.carouselCaptions.value = "";
+        }
+        if (this.elements.imageAlignment) {
+            this.elements.imageAlignment.value = "left";
+        }
+        if (this.elements.imageCaption) {
+            this.elements.imageCaption.value = "";
+        }
+
         this.currentImages = [];
         if (this.elements.imagePreviewContainer) this.elements.imagePreviewContainer.innerHTML = "";
         if (this.elements.imageInput) this.elements.imageInput.value = "";
@@ -1066,12 +1085,6 @@ const SectionEditor = {
             alert("Please select a Page and a Section from the dropdown menus before saving!");
             return;
         }
-
-// DISABLED: commented this out so you can save Video-only or PDF-only sections
-        // if (!updatedTitle && !updatedBody) {
-        //     alert("Please provide at least a Title or a Description.");
-        //     return;
-        // }
 
         try {
             this.elements.saveBtn.disabled = true;
@@ -1146,15 +1159,24 @@ const SectionEditor = {
             }
                             
             const docRef = doc(db, "page_sections", sectionId);
+            const updatedCarouselCaptions = this.elements.carouselCaptions ? this.elements.carouselCaptions.value.split('\n').map(c => c.trim()) : [];
+            const updatedImgAlign = this.elements.imageAlignment ? this.elements.imageAlignment.value : "left";
+            const updatedImgCaption = this.elements.imageCaption ? this.elements.imageCaption.value.trim() : "";
+
             await updateDoc(docRef, {
                 title: updatedTitle,
                 body_text: updatedBody,
+                is_collapsible: this.elements.isCollapsible.checked,
+                image_alignment: updatedImgAlign,
+                image_caption: updatedImgCaption,
                 video_url: updatedVideo,
+                video_caption: this.elements.videoCaption ? this.elements.videoCaption.value : "",
                 carousel_images: finalImageArray,
+                carousel_captions: updatedCarouselCaptions,
                 pdf_url: finalPdfUrl,
                 table_data: updatedTableData,
-                button_text: this.elements.btnText.value,
-                subpage_title: this.elements.subpageTitle.value,
+                button_text: this.elements.btnText ? this.elements.btnText.value : "Learn More",
+                subpage_title: this.elements.subpageTitle ? this.elements.subpageTitle.value : "",
                 updatedAt: serverTimestamp()
             });
 
@@ -1349,11 +1371,6 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('save-draft')?.addEventListener('click', () => FooterManager.saveDraft());
 document.getElementById('publish-live')?.addEventListener('click', () => FooterManager.publishLive());
 
-// Video Content Listeners
-// 1. Update Preview (Save Draft)
-document.getElementById('save-video-draft')?.addEventListener('click', () => { VideoManager.saveDraft();});
-// 2. Publish to Live Site
-document.getElementById('publish-video-live')?.addEventListener('click', () => {VideoManager.publishLive();});
 
 // New Section Listeners
 document.getElementById('add-section-btn')?.addEventListener('click', () => SectionManager.addSection());

@@ -130,6 +130,7 @@
                         <label class="form-label fw-bold">Section Heading (Title) :</label>
                         <input type="text" id="section-title" class="form-control" placeholder="e.g., New Research Activities">
                     </div>
+
                     <div class="mb-2">
                         <label class="form-label fw-bold small text-uppercase">Title Alignment</label>
                         <select id="title-alignment" class="form-select form-select-sm">
@@ -141,7 +142,7 @@
                         <label class="form-label fw-bold">Section Description (Text): </label>
                         <textarea id="section-body" class="form-control" rows="4" placeholder="Describe this section..."></textarea>
                         <small class="text-muted d-block mt-1">
-                            <i class="bi bi-info-circle"></i> <b>Links:</b> [Text](https://url.com) | <b>Bullets:</b> Start a line with a dash ( - ) | <b>Bold:</b> **text**
+                            <i class="bi bi-info-circle"></i> <b>Links:</b> [Text](https://url.com) | <b>Bullets:</b> Start a line with a dash ( - ), sub-bullets (--) | <b>Bold:</b> **text** <b>Underline:</b> __text__
                         </small>
                     </div>
                     <div class="mb-2">
@@ -151,21 +152,36 @@
                             <option value="text-center">Center Aligned</option>
                         </select>
                     </div>
-                
+                    <div class="d-flex justify-content-between align-items-center mb-3 mt-2 border p-2 bg-light rounded" style="padding-left: 12px !important; padding-right: 12px !important;">
+                        <label class="form-check-label fw-bold small text-uppercase mb-0 text-start text-dark" for="section-is-collapsible" style="cursor: pointer; user-select: none;">
+                            Display as Collapsible Bar
+                        </label>
+                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center">
+                            <input class="form-check-input p-0 m-0" type="checkbox" id="section-is-collapsible" style="cursor: pointer; width: 2.5em; height: 1.25em;">
+                        </div>
+                    </div>
                     <hr>
                     <!-- Section Image-->
                     <div class="mb-2">
                         <label class="form-label fw-bold small text-uppercase">Add Image(s) (Optional):</label>
                         <input type="file" id="section-image" class="form-control form-control-sm" accept="image/*" multiple>
                     </div>
-                    
                     <div class="mb-2 rounded mx-0 mt-3">
                         <label class="form-label fw-bold small text-uppercase">Image Position (Single Image Only)</label>
                         <select id="image-alignment" class="form-select form-select-sm">
                             <option value="left">Left Side (Default)</option>
                             <option value="right">Right Side</option>
+                            <option value="center">Center (Below Text)</option> </select>
                         </select>
                         <small class="text-muted">Note: Carousels always appear below the text.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Single Image Caption (Optional)</label>
+                        <input type="text" id="section-image-caption" class="form-control" placeholder="Enter a caption for a single image...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Sliding Cards Captions (Optional)</label>
+                        <textarea id="section-carousel-captions" class="form-control" rows="3" placeholder="Enter one caption per line to match your uploaded images. Leave blank for an image-only carousel."></textarea>
                     </div>
 
                     <hr>
@@ -197,6 +213,12 @@
                             <input type="text" id="section-video" class="form-control form-control-sm" placeholder="Paste YouTube or Echo360 link here...">
                             <small class="text-muted">For YouTube, just paste the normal link. For Echo360, paste the "Embed" link.</small>
                         </div>
+                        <div id="add-video-preview-container" class="ratio ratio-16x9 mt-3 shadow-sm rounded overflow-hidden d-none">
+                            <iframe id="add-video-preview-iframe" src="" allowfullscreen></iframe>
+                        </div>
+            
+                        <label class="form-label fw-bold small text-uppercase">Video Caption (Optional)</label>
+                        <input type="text" id="section-video-caption" class="form-control" placeholder="Enter a caption to display below the video...">
                     </div>
                     <hr>
 
@@ -265,6 +287,11 @@
                     </div>
                 
                     <input type="hidden" id="edit-section-id">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Subpage Page Title (Optional)</label>
+                        <input type="text" id="edit-subpage-title" class="form-control" placeholder="Leave blank to use the standard Section Title...">
+                        <div class="form-text">This text will appear at the very top of the page when someone clicks into this subpage.</div>
+                    </div>
                 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Section Heading:</label>
@@ -274,8 +301,20 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Section Description (Text):</label>
                         <textarea id="edit-section-body" class="form-control" rows="6"></textarea>
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-info-circle"></i> <b>Links:</b> [Text](https://url.com) | <b>Bullets:</b> Start a line with a dash ( - ), sub-bullets (--) | <b>Bold:</b> **text** <b>Underline:</b> __text__
+                        </small>
                     </div>
-
+                    <div class="d-flex justify-content-between align-items-center mb-3 mt-2 border p-2 bg-light rounded" style="padding-left: 12px !important; padding-right: 12px !important;">
+                        <label class="form-check-label fw-bold small text-uppercase mb-0 text-start text-dark" for="edit-section-is-collapsible" style="cursor: pointer; user-select: none;">
+                            Display as Collapsible Bar
+                        </label>
+                        <div class="form-check form-switch p-0 m-0 d-flex align-items-center">
+                            <input class="form-check-input p-0 m-0" type="checkbox" id="edit-section-is-collapsible" style="cursor: pointer; width: 2.5em; height: 1.25em;">
+                        </div>
+                    </div>
+                    <hr>
+                    
                     <div class="mb-3 p-3 border rounded bg-light">
                         <label class="form-label fw-bold mb-1"><i class="bi bi-play-btn-fill text-danger"></i> Video URL (Optional)</label>
                         <small class="d-block text-muted mb-2">Paste a YouTube or Echo360 link here. Leave blank to remove the video from this section.</small>
@@ -289,7 +328,10 @@
                                 allowfullscreen>
                             </iframe>
                         </div>
+                        <label class="form-label fw-bold mt-3">Video Caption (Optional)</label>
+                        <input type="text" id="edit-section-video-caption" class="form-control" placeholder="Enter a caption to display below the video...">
                     </div>
+
                     <div class="mb-3 border p-3 bg-light rounded">
                         <label class="form-label fw-bold">Section Images & Carousels (Optional)</label>
                         
@@ -299,6 +341,23 @@
                         <input type="file" id="edit-section-image" class="form-control form-control-sm" accept="image/*" multiple>
                         <small class="form-text text-muted">Select one or more new images to append to this section.</small>
                     </div>
+                    <div class="mb-3 border p-3 bg-light rounded">
+                        <label class="form-label fw-bold">Image Alignment</label>
+                        <select id="edit-image-alignment" class="form-select">
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                            <option value="center">Center (Below Text)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3 border p-3 bg-light rounded">
+                        <label class="form-label fw-bold">Single Image Caption (Optional)</label>
+                        <input type="text" id="edit-section-image-caption" class="form-control" placeholder="Enter a caption to display below a single image...">
+                    </div>
+                    <div class="mb-3 border p-3 bg-light rounded">
+                        <label class="form-label fw-bold">Sliding Card Captions (Optional)</label>
+                        <textarea id="edit-section-carousel-captions" class="form-control" rows="3" placeholder="Enter one caption per line to match your uploaded images. Leave blank for an image-only carousel."></textarea>
+                    </div>
+                    
 
                     <div class="mb-3 border p-3 bg-light rounded">
                         <label class="form-label fw-bold">Section PDF</label>
